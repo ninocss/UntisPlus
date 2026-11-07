@@ -1115,7 +1115,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _stylePresetButton(
-                    label: 'Fokus',
+                    label: l.widgetPresetFocus,
                     icon: Icons.dark_mode_rounded,
                     onTap: () => _applyStylePreset(1),
                   ),
@@ -1123,7 +1123,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _stylePresetButton(
-                    label: 'Agenda',
+                    label: l.widgetPresetAgenda,
                     icon: Icons.article_rounded,
                     onTap: () => _applyStylePreset(2),
                   ),
@@ -1314,17 +1314,17 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
         l.editor,
         actions: [
           IconButton(
-            tooltip: 'Undo',
+            tooltip: l.commonUndo,
             onPressed: _historyIndex > 0 ? _undo : null,
             icon: const Icon(Icons.undo_rounded),
           ),
           IconButton(
-            tooltip: 'Redo',
+            tooltip: l.commonRedo,
             onPressed: _historyIndex < _history.length - 1 ? _redo : null,
             icon: const Icon(Icons.redo_rounded),
           ),
           IconButton(
-            tooltip: 'Randomize',
+            tooltip: l.bgEditorRandomize,
             onPressed: _randomizeDesign,
             icon: const Icon(Icons.casino_rounded),
           ),
@@ -1344,7 +1344,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               MenuItemButton(
                 leadingIcon: const Icon(Icons.restart_alt_rounded),
                 onPressed: _resetDesign,
-                child: const Text('Reset design'),
+                child: Text(l.editorResetDesign),
               ),
             ],
             builder: (context, controller, child) => IconButton(

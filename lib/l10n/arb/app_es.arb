@@ -1209,5 +1209,22 @@
   "settingsAiPromptInsertVariable": "Insertar variable",
   "settingsAiPrivacy": "Privacidad",
   "settingsAiShareGrades": "Compartir notas con la IA",
-  "settingsAiShareGradesDesc": "Las medias por asignatura se añaden al prompt. Con proveedores en la nube salen de tu dispositivo."
+  "settingsAiShareGradesDesc": "Las medias por asignatura se añaden al prompt. Con proveedores en la nube salen de tu dispositivo.",
+  "settingsLessonExpressiveDesign": "Diseño expresivo",
+  "settingsLessonExpressiveDesignDesc": "Activa el diseño con formas de tarjetas dinámicas, línea de tiempo e indicador de tiempo animado.",
+  "expressiveLessonCancelled": "Cancelado",
+  "expressiveLessonSemanticsCancelled": ", cancelado",
+  "commonRedo": "Rehacer",
+  "editorResetDesign": "Restablecer diseño",
+  "widgetPresetFocus": "Enfoque",
+  "widgetPresetAgenda": "Agenda",
+  "roomSearchPeriod": "{period}.ª h",
+  "@roomSearchPeriod": {
+    "placeholders": {
+      "period": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsAiMaxTokensLocalRecommended": "(Recomendado: 256–512 para respuestas locales rápidas y más espacio para datos de horarios)"
 }

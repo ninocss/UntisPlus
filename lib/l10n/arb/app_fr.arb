@@ -1209,5 +1209,22 @@
   "settingsAiPromptInsertVariable": "Insérer une variable",
   "settingsAiPrivacy": "Confidentialité",
   "settingsAiShareGrades": "Partager les notes avec l'IA",
-  "settingsAiShareGradesDesc": "Les moyennes par matière sont ajoutées au prompt. Avec les fournisseurs cloud, elles quittent ton appareil."
+  "settingsAiShareGradesDesc": "Les moyennes par matière sont ajoutées au prompt. Avec les fournisseurs cloud, elles quittent ton appareil.",
+  "settingsLessonExpressiveDesign": "Design expressif",
+  "settingsLessonExpressiveDesignDesc": "Active le design avec formes de cartes dynamiques, chronologie et indicateur temporel animé.",
+  "expressiveLessonCancelled": "Annulé",
+  "expressiveLessonSemanticsCancelled": ", annulé",
+  "commonRedo": "Rétablir",
+  "editorResetDesign": "Réinitialiser le design",
+  "widgetPresetFocus": "Focus",
+  "widgetPresetAgenda": "Agenda",
+  "roomSearchPeriod": "{period}e h",
+  "@roomSearchPeriod": {
+    "placeholders": {
+      "period": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsAiMaxTokensLocalRecommended": "(Recommandé : 256–512 pour des réponses locales rapides et plus d’espace pour l’emploi du temps)"
 }

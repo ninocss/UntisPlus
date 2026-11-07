@@ -1577,5 +1577,22 @@
   "settingsAiPromptInsertVariable": "Variable einfügen",
   "settingsAiPrivacy": "Datenschutz",
   "settingsAiShareGrades": "Noten an die KI senden",
-  "settingsAiShareGradesDesc": "Durchschnitte pro Fach kommen in den Prompt. Bei Cloud-Anbietern verlassen sie dein Gerät."
+  "settingsAiShareGradesDesc": "Durchschnitte pro Fach kommen in den Prompt. Bei Cloud-Anbietern verlassen sie dein Gerät.",
+  "settingsLessonExpressiveDesign": "Expressives Design",
+  "settingsLessonExpressiveDesignDesc": "Aktiviert das Design mit dynamischen Kartenformen, Timeline und animierter Wellen-Zeitanzeige.",
+  "expressiveLessonCancelled": "Entfällt",
+  "expressiveLessonSemanticsCancelled": ", fällt aus",
+  "commonRedo": "Wiederholen",
+  "editorResetDesign": "Design zurücksetzen",
+  "widgetPresetFocus": "Fokus",
+  "widgetPresetAgenda": "Agenda",
+  "roomSearchPeriod": "{period}. Std",
+  "@roomSearchPeriod": {
+    "placeholders": {
+      "period": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsAiMaxTokensLocalRecommended": "(Empfohlen: 256–512 für schnelle lokale Antworten und mehr Platz für Stundenplandaten)"
 }

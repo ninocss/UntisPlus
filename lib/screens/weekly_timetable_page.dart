@@ -559,6 +559,38 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     } catch (_) {}
   }
 
+  void _populateMasterDataFromPublicElements(List<dynamic> elements) {
+    for (final raw in elements) {
+      if (raw is! Map) continue;
+      final type = asIntOrNull(raw['type']);
+      final id = asIntOrNull(raw['id']);
+      if (type == null || id == null) continue;
+      final name = (raw['name'] ?? raw['shortName'] ?? '').toString().trim();
+      final longName = (raw['longName'] ??
+              raw['longname'] ??
+              raw['displayName'] ??
+              name)
+          .toString()
+          .trim();
+
+      if (type == 3) {
+        if (name.isNotEmpty) _subjectShortMap.putIfAbsent(id, () => name);
+        if (longName.isNotEmpty) {
+          _subjectLong.putIfAbsent(id, () => longName);
+        } else if (name.isNotEmpty) {
+          _subjectLong.putIfAbsent(id, () => name);
+        }
+      } else if (type == 4) {
+        final roomName = name.isNotEmpty ? name : longName;
+        if (roomName.isNotEmpty) _roomMap.putIfAbsent(id, () => roomName);
+      } else if (type == 2) {
+        final fore = (raw['foreName'] ?? raw['forename'] ?? '').toString().trim();
+        final full = fore.isNotEmpty ? '$fore $longName' : (longName.isNotEmpty ? longName : name);
+        if (full.isNotEmpty) _teacherMap.putIfAbsent(id, () => full);
+      }
+    }
+  }
+
   Future<void> _fetchMasterData({bool force = false}) async {
     if (!force &&
         _subjectShortMap.isNotEmpty &&
@@ -605,6 +637,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final id = room['id'] as int?;
         if (id != null) _roomMap[id] = (room['name'] ?? '').toString();
       }
+
+      if (_subjectShortMap.isEmpty || _roomMap.isEmpty || _teacherMap.isEmpty) {
+        final publicData = await _timetableRepository.fetchPublicWeeklyData(
+          context: _timetableRequestContext,
+          elementId: _viewingClassId ?? personId,
+          elementType: _viewingClassId != null
+              ? 1
+              : (personType == 0 ? 5 : personType),
+          date: _currentMonday,
+        );
+        if (publicData != null) {
+          final elements =
+              (publicData['elements'] as List?) ?? const <dynamic>[];
+          _populateMasterDataFromPublicElements(elements);
+        }
+      }
+
       unawaited(_saveMasterDataToCache());
     } catch (_) {}
   }
@@ -1581,16 +1630,37 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       final firstSubject = suList.first as Map?;
       if (firstSubject != null) {
         final sId = firstSubject['id'] as int?;
-        lesson['_subjectShort'] = sId != null
-            ? (_subjectShortMap[sId] ??
-                  (firstSubject['name']?.toString() ?? '?'))
+        final rawShort = firstSubject['name']?.toString().trim() ?? '';
+        final rawLong = (firstSubject['longName'] ??
+                firstSubject['longname'] ??
+                '')
+            .toString()
+            .trim();
+        final mappedShort =
+            sId != null ? _subjectShortMap[sId]?.trim() ?? '' : '';
+        final mappedLong = sId != null ? _subjectLong[sId]?.trim() ?? '' : '';
+        final previousShort =
+            lesson['_subjectShort']?.toString().trim() ?? '';
+        final previousLong = lesson['_subjectLong']?.toString().trim() ?? '';
+
+        final short = mappedShort.isNotEmpty
+            ? mappedShort
+            : rawShort.isNotEmpty
+            ? rawShort
+            : (previousShort.isNotEmpty && previousShort != '?')
+            ? previousShort
             : '?';
-        lesson['_subjectLong'] = sId != null
-            ? (_subjectLong[sId] ??
-                  (firstSubject['longName']?.toString() ??
-                      firstSubject['name']?.toString() ??
-                      '?'))
-            : '?';
+
+        final long = mappedLong.isNotEmpty
+            ? mappedLong
+            : rawLong.isNotEmpty
+            ? rawLong
+            : (previousLong.isNotEmpty && previousLong != '?')
+            ? previousLong
+            : (short != '?' ? short : '?');
+
+        lesson['_subjectShort'] = short;
+        lesson['_subjectLong'] = long;
       }
     }
     final rawRo = lesson['ro'];
@@ -1602,15 +1672,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     if (roList.isNotEmpty) {
       final names = roList
           .map((ro) {
-            final rId = (ro as Map)['id'] as int?;
-            return rId != null
-                ? (_roomMap[rId] ?? (ro['name']?.toString() ?? '?'))
-                : (ro['name']?.toString() ?? '?');
+            if (ro is! Map) return '?';
+            final rId = ro['id'] as int?;
+            final rawName = ro['name']?.toString().trim() ?? '';
+            final mapped = rId != null ? _roomMap[rId]?.trim() : null;
+            if (mapped != null && mapped.isNotEmpty) return mapped;
+            if (rawName.isNotEmpty) return rawName;
+            return '?';
           })
           .where((name) => name != '?')
           .toSet()
           .toList();
-      lesson['_room'] = names.isNotEmpty ? names.join(', ') : '?';
+      final previousRoom = lesson['_room']?.toString().trim() ?? '';
+      lesson['_room'] = names.isNotEmpty
+          ? names.join(', ')
+          : (previousRoom.isNotEmpty && previousRoom != '?'
+              ? previousRoom
+              : '');
     }
   }
 
@@ -3429,7 +3507,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                 true
                                             ? l['_subjectLong'].toString()
                                             : '?');
-                                  final room = l['_room']?.toString() ?? '';
+                                  final rawRoom =
+                                      (l['_room']?.toString() ?? '').trim();
+                                  final room =
+                                      rawRoom == '?' ? '' : rawRoom;
                                   final teacher = _displayTeacher(l);
                                   final isCurrent =
                                       (startMin <= nowMin && nowMin < endMin);
@@ -3625,12 +3706,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
 
     final timeColWidth = 40 * _gridTextScale;
-    const double minDayColWidth = 56.0;
     const double dayColGap = 4.0;
-    // Leave a real trailing gutter inside the horizontal viewport. Without
-    // it, the Friday column ends exactly at the clip edge on phones and its
-    // card border/shadow can be cut off.
-    const double trailingDayGridInset = 12.0;
     final visibleWeekData = <int, List<dynamic>>{
       for (final dayIndex in shownDays)
         dayIndex: wd[dayIndex] ?? const <dynamic>[],
@@ -3666,23 +3742,22 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final dayGridWidth = math.max(
-              (shownDays.length * minDayColWidth) +
-                  (dayColGap * (shownDays.length - 1)),
-              constraints.maxWidth - timeColWidth - 4 - trailingDayGridInset,
+            final effectiveDayColGap = shownDays.length > 3 ? 3.0 : dayColGap;
+            final availableDayGridWidth = math.max(
+              0.0,
+              constraints.maxWidth - timeColWidth - 4,
             );
+            final dayGridWidth = availableDayGridWidth;
             final dayColWidth =
-                (dayGridWidth - (dayColGap * (shownDays.length - 1))) /
+                (dayGridWidth - (effectiveDayColGap * (shownDays.length - 1))) /
                 shownDays.length;
 
-            // On small screens all day columns cannot fit alongside the time
-            // gutter. Keep their minimum readable width and scroll horizontally.
             return SingleChildScrollView(
               key: const ValueKey('week-grid-horizontal-scroll'),
               scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
+              physics: const NeverScrollableScrollPhysics(),
               child: SizedBox(
-                width: timeColWidth + 4 + dayGridWidth + trailingDayGridInset,
+                width: constraints.maxWidth,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -3774,7 +3849,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               margin: EdgeInsets.only(
                                 right: visibleIndex == shownDays.length - 1
                                     ? 0
-                                    : dayColGap,
+                                    : effectiveDayColGap,
                               ),
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
@@ -3933,8 +4008,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                         ? l['_subjectLong']
                                                               .toString()
                                                         : '?');
+                                              final rawRoom =
+                                                  (l['_room']?.toString() ?? '')
+                                                      .trim();
                                               final room =
-                                                  l['_room']?.toString() ?? '';
+                                                  rawRoom == '?'
+                                                      ? ''
+                                                      : rawRoom;
                                               final teacher = _displayTeacher(
                                                 l,
                                               );
@@ -4489,12 +4569,30 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           .expand((day) => day)
           .where((l) => ((l['_teacher'] ?? '').toString().trim().isEmpty))
           .toList();
-      if (missingTeacherLessons.isNotEmpty) {
-        // Resolve the data snapshot before it becomes visible. A week must
-        // never repaint merely because its teacher directory arrived later.
-        await _resolveMissingTeachers(
+      final missingSubjectLessons = tempWeek.values
+          .expand((day) => day)
+          .where((l) {
+            final s = (l['_subjectShort'] ?? '').toString().trim();
+            return s.isEmpty || s == '?';
+          })
+          .toList();
+      final missingRoomLessons = tempWeek.values
+          .expand((day) => day)
+          .where((l) {
+            final r = (l['_room'] ?? '').toString().trim();
+            return r.isEmpty || r == '?';
+          })
+          .toList();
+
+      if (missingTeacherLessons.isNotEmpty ||
+          missingSubjectLessons.isNotEmpty ||
+          missingRoomLessons.isNotEmpty) {
+        // Resolve the data snapshot before it becomes visible.
+        await _resolveMissingLessonDetails(
           tempWeek: tempWeek,
           missingTeacherLessons: missingTeacherLessons,
+          missingSubjectLessons: missingSubjectLessons,
+          missingRoomLessons: missingRoomLessons,
           requestGeneration: requestGeneration,
           requestedMonday: requestedMonday,
           requestAccountId: requestAccountId,
@@ -4695,9 +4793,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
   }
 
-  Future<void> _resolveMissingTeachers({
+  Future<void> _resolveMissingLessonDetails({
     required Map<int, List<dynamic>> tempWeek,
     required List<dynamic> missingTeacherLessons,
+    required List<dynamic> missingSubjectLessons,
+    required List<dynamic> missingRoomLessons,
     required int requestGeneration,
     required DateTime requestedMonday,
     required String requestAccountId,
@@ -4717,9 +4817,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     final exactKeyToTeacher = <String, String>{};
     final looseKeyToTeacher = <String, String>{};
+    final exactKeyToSubjectShort = <String, String>{};
+    final looseKeyToSubjectShort = <String, String>{};
+    final exactKeyToSubjectLong = <String, String>{};
+    final looseKeyToSubjectLong = <String, String>{};
+    final exactKeyToRoom = <String, String>{};
+    final looseKeyToRoom = <String, String>{};
 
-    // Fallback 1: Public weekly endpoint often contains teacher IDs in
-    // period elements (type=2) even when JSON-RPC omits `te`.
+    // Fallback 1: Public weekly endpoint often contains element and period
+    // metadata even when JSON-RPC master endpoints fail or omit data.
     try {
       final data = await _timetableRepository.fetchPublicWeeklyData(
         context: _timetableRequestContext,
@@ -4729,21 +4835,44 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       );
       if (data != null) {
         final elements = (data['elements'] as List?) ?? const <dynamic>[];
+        _populateMasterDataFromPublicElements(elements);
+
         final teacherNameById = <int, String>{};
+        final subjectShortById = <int, String>{};
+        final subjectLongById = <int, String>{};
+        final roomNameById = <int, String>{};
+
         for (final e in elements) {
           if (e is! Map) continue;
-          if ((e['type'] as int?) != 2) continue;
-          final id = e['id'] as int?;
-          if (id == null) continue;
-          final n =
-              (e['longName'] ??
-                      e['longname'] ??
-                      e['displayname'] ??
-                      e['name'] ??
-                      '')
-                  .toString()
-                  .trim();
-          if (n.isNotEmpty) teacherNameById[id] = n;
+          final type = asIntOrNull(e['type']);
+          final id = asIntOrNull(e['id']);
+          if (type == null || id == null) continue;
+          final name = (e['name'] ?? e['shortName'] ?? '').toString().trim();
+          final longName = (e['longName'] ??
+                  e['longname'] ??
+                  e['displayName'] ??
+                  name)
+              .toString()
+              .trim();
+
+          if (type == 2) {
+            final fore =
+                (e['foreName'] ?? e['forename'] ?? '').toString().trim();
+            final full = fore.isNotEmpty
+                ? '$fore $longName'
+                : (longName.isNotEmpty ? longName : name);
+            if (full.isNotEmpty) teacherNameById[id] = full;
+          } else if (type == 3) {
+            if (name.isNotEmpty) subjectShortById[id] = name;
+            if (longName.isNotEmpty) {
+              subjectLongById[id] = longName;
+            } else if (name.isNotEmpty) {
+              subjectLongById[id] = name;
+            }
+          } else if (type == 4) {
+            final roomName = name.isNotEmpty ? name : longName;
+            if (roomName.isNotEmpty) roomNameById[id] = roomName;
+          }
         }
 
         final elementPeriods = (data['elementPeriods'] as Map?) ?? const {};
@@ -4764,14 +4893,26 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             if (t == 3 && id != null) subjectId ??= id;
             if (t == 4 && id != null) roomId ??= id;
             if (t == 2 && id != null) {
-              final tn = teacherNameById[id];
+              final tn = teacherNameById[id] ?? _teacherMap[id];
               if (tn != null && tn.isNotEmpty && !teacherNames.contains(tn)) {
                 teacherNames.add(tn);
               }
             }
           }
           final teacherJoined = teacherNames.join(', ');
-          if (teacherJoined.isEmpty || subjectId == null) continue;
+          final subShort = subjectId != null
+              ? (subjectShortById[subjectId] ??
+                  _subjectShortMap[subjectId] ??
+                  '')
+              : '';
+          final subLong = subjectId != null
+              ? (subjectLongById[subjectId] ??
+                  _subjectLong[subjectId] ??
+                  subShort)
+              : '';
+          final roName = roomId != null
+              ? (roomNameById[roomId] ?? _roomMap[roomId] ?? '')
+              : '';
 
           final exactKey = _lessonTeacherKeyFromParts(
             date: p['date'],
@@ -4788,8 +4929,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             subjectId: subjectId,
             withRoom: false,
           );
-          exactKeyToTeacher.putIfAbsent(exactKey, () => teacherJoined);
-          looseKeyToTeacher.putIfAbsent(looseKey, () => teacherJoined);
+
+          if (teacherJoined.isNotEmpty) {
+            exactKeyToTeacher.putIfAbsent(exactKey, () => teacherJoined);
+            looseKeyToTeacher.putIfAbsent(looseKey, () => teacherJoined);
+          }
+          if (subShort.isNotEmpty) {
+            exactKeyToSubjectShort.putIfAbsent(exactKey, () => subShort);
+            looseKeyToSubjectShort.putIfAbsent(looseKey, () => subShort);
+          }
+          if (subLong.isNotEmpty) {
+            exactKeyToSubjectLong.putIfAbsent(exactKey, () => subLong);
+            looseKeyToSubjectLong.putIfAbsent(looseKey, () => subLong);
+          }
+          if (roName.isNotEmpty) {
+            exactKeyToRoom.putIfAbsent(exactKey, () => roName);
+            looseKeyToRoom.putIfAbsent(looseKey, () => roName);
+          }
         }
       }
     } catch (_) {}
@@ -4797,15 +4953,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     if (!isCurrent()) return;
 
     // Fallback 2: Query related class timetables and try key matching.
-    final stillMissing = missingTeacherLessons.any((l) {
+    final stillMissingTeachers = missingTeacherLessons.any((l) {
       if (l is! Map) return false;
       final lMap = Map<dynamic, dynamic>.from(l);
       final exact = exactKeyToTeacher[_lessonTeacherKey(lMap, withRoom: true)];
-      final loose = looseKeyToTeacher[_lessonTeacherKey(lMap, withRoom: false)];
+      final loose =
+          looseKeyToTeacher[_lessonTeacherKey(lMap, withRoom: false)];
       return (exact ?? loose ?? '').isEmpty;
     });
 
-    if (stillMissing && classIdsInWeek.isNotEmpty) {
+    if (stillMissingTeachers && classIdsInWeek.isNotEmpty) {
       final classesToQuery = classIdsInWeek.take(6);
       await Future.wait(
         classesToQuery.map((classId) async {
@@ -4840,11 +4997,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     if (!isCurrent()) return;
 
     var updatedAny = false;
+
+    // Apply resolved teachers
     for (final l in missingTeacherLessons) {
       if (l is! Map) continue;
       final lMap = Map<dynamic, dynamic>.from(l);
       final exact = exactKeyToTeacher[_lessonTeacherKey(lMap, withRoom: true)];
-      final loose = looseKeyToTeacher[_lessonTeacherKey(lMap, withRoom: false)];
+      final loose =
+          looseKeyToTeacher[_lessonTeacherKey(lMap, withRoom: false)];
       final fallbackTeacher = exact ?? loose ?? '';
       if (fallbackTeacher.isNotEmpty && l['_teacher'] != fallbackTeacher) {
         l['_teacher'] = fallbackTeacher;
@@ -4852,10 +5012,62 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
     }
 
-    // The caller publishes this complete snapshot atomically. Keeping this
-    // method mutation-only prevents delayed teacher lookups from refreshing a
-    // different week after the user has already switched away.
-    if (updatedAny && !isCurrent()) return;
+    // Apply resolved subjects
+    for (final l in missingSubjectLessons) {
+      if (l is! Map) continue;
+      final lMap = Map<dynamic, dynamic>.from(l);
+      final subId = (l['su'] as List?)?.firstOrNull?['id'] as int?;
+      final exactShort =
+          exactKeyToSubjectShort[_lessonTeacherKey(lMap, withRoom: true)];
+      final looseShort =
+          looseKeyToSubjectShort[_lessonTeacherKey(lMap, withRoom: false)];
+      final mappedShort = subId != null ? _subjectShortMap[subId] : null;
+      final resolvedShort = exactShort ?? looseShort ?? mappedShort ?? '';
+
+      final exactLong =
+          exactKeyToSubjectLong[_lessonTeacherKey(lMap, withRoom: true)];
+      final looseLong =
+          looseKeyToSubjectLong[_lessonTeacherKey(lMap, withRoom: false)];
+      final mappedLong = subId != null ? _subjectLong[subId] : null;
+      final resolvedLong =
+          exactLong ?? looseLong ?? mappedLong ?? resolvedShort;
+
+      if (resolvedShort.isNotEmpty &&
+          (l['_subjectShort'] == null ||
+              l['_subjectShort'] == '' ||
+              l['_subjectShort'] == '?')) {
+        l['_subjectShort'] = resolvedShort;
+        updatedAny = true;
+      }
+      if (resolvedLong.isNotEmpty &&
+          (l['_subjectLong'] == null ||
+              l['_subjectLong'] == '' ||
+              l['_subjectLong'] == '?')) {
+        l['_subjectLong'] = resolvedLong;
+        updatedAny = true;
+      }
+    }
+
+    // Apply resolved rooms
+    for (final l in missingRoomLessons) {
+      if (l is! Map) continue;
+      final lMap = Map<dynamic, dynamic>.from(l);
+      final roId = (l['ro'] as List?)?.firstOrNull?['id'] as int?;
+      final exactRoom = exactKeyToRoom[_lessonTeacherKey(lMap, withRoom: true)];
+      final looseRoom = looseKeyToRoom[_lessonTeacherKey(lMap, withRoom: false)];
+      final mappedRoom = roId != null ? _roomMap[roId] : null;
+      final resolvedRoom = exactRoom ?? looseRoom ?? mappedRoom ?? '';
+
+      if (resolvedRoom.isNotEmpty &&
+          (l['_room'] == null || l['_room'] == '' || l['_room'] == '?')) {
+        l['_room'] = resolvedRoom;
+        updatedAny = true;
+      }
+    }
+
+    if (updatedAny) {
+      unawaited(_saveMasterDataToCache());
+    }
   }
 
   Future<void> _openClassSearch() async {

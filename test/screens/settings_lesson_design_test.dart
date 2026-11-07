@@ -16,7 +16,7 @@ void main() {
   });
 
   testWidgets(
-    'SettingsLessonDesignPage renders Expressives Figma-Design switch and toggles it',
+    'SettingsLessonDesignPage renders Expressives Design switch and toggles it',
     (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -71,6 +71,28 @@ void main() {
 
       // Verify notifier changed to true
       expect(lessonCleanDesignNotifier.value, isTrue);
+    },
+  );
+
+  testWidgets(
+    'SettingsLessonDesignPage renders Expressive design switch in English',
+    (tester) async {
+      appLocaleNotifier.value = 'en';
+      final l = appL10nFor('en');
+      expect(l.settingsLessonExpressiveDesign, 'Expressive design');
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: SettingsLessonDesignPage(),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final tileFinder = find.widgetWithText(
+        SettingsSwitchTile,
+        'Expressive design',
+      );
+      expect(tileFinder, findsOneWidget);
     },
   );
 }

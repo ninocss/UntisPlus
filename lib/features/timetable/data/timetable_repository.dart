@@ -64,30 +64,46 @@ class TimetableRepository {
   Future<TimetableMasterData> fetchMasterData(
     WebUntisRequestContext context,
   ) async {
-    final responses = await Future.wait([
-      _client.rpc(
-        context: context,
-        method: 'getSubjects',
-        params: const <String, dynamic>{},
-        requestId: 'sub',
-      ),
-      _client.rpc(
-        context: context,
-        method: 'getTeachers',
-        params: const <String, dynamic>{},
-        requestId: 'tea',
-      ),
-      _client.rpc(
-        context: context,
-        method: 'getRooms',
-        params: const <String, dynamic>{},
-        requestId: 'roo',
-      ),
+    final subjectsFuture = _client
+        .rpc(
+          context: context,
+          method: 'getSubjects',
+          params: const <String, dynamic>{},
+          requestId: 'sub',
+        )
+        .then(_resultMaps)
+        .catchError((_) => const <Map<String, dynamic>>[]);
+
+    final teachersFuture = _client
+        .rpc(
+          context: context,
+          method: 'getTeachers',
+          params: const <String, dynamic>{},
+          requestId: 'tea',
+        )
+        .then(_resultMaps)
+        .catchError((_) => const <Map<String, dynamic>>[]);
+
+    final roomsFuture = _client
+        .rpc(
+          context: context,
+          method: 'getRooms',
+          params: const <String, dynamic>{},
+          requestId: 'roo',
+        )
+        .then(_resultMaps)
+        .catchError((_) => const <Map<String, dynamic>>[]);
+
+    final results = await Future.wait([
+      subjectsFuture,
+      teachersFuture,
+      roomsFuture,
     ]);
+
     return TimetableMasterData(
-      subjects: _resultMaps(responses[0]),
-      teachers: _resultMaps(responses[1]),
-      rooms: _resultMaps(responses[2]),
+      subjects: results[0],
+      teachers: results[1],
+      rooms: results[2],
     );
   }
 
@@ -102,10 +118,10 @@ class TimetableRepository {
     bool showSubstitutionText = true,
     bool showInfo = true,
     bool showBooking = true,
-    bool showRooms = false,
-    bool showSubjects = false,
-    bool showTeachers = false,
-    bool showClasses = false,
+    bool showRooms = true,
+    bool showSubjects = true,
+    bool showTeachers = true,
+    bool showClasses = true,
   }) async {
     final response = await _client.rpc(
       context: context,

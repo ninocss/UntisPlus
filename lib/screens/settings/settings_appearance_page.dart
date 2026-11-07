@@ -284,144 +284,145 @@ class SettingsAppearancePage extends StatelessWidget {
   ) {
     final cs = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return SettingsGroup(
-      title: l.settingsVisualTheme,
-      padding: const EdgeInsets.all(10),
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
-              child: Text(
-                l.settingsVisualThemeDesc,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+    final tokens = untisThemeTokensOf(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 14, bottom: 8, top: 4),
+            child: Text(
+              l.settingsVisualTheme,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontSize: tokens.id == AppThemeId.manga ? 21 : 13,
+                fontWeight: FontWeight.w800,
+                color: cs.primary,
+                letterSpacing: tokens.id == AppThemeId.cyber ? 1.2 : 0.25,
               ),
             ),
-            ResponsiveFixedGrid(
-              itemCount: AppThemeId.values.length,
-              mainAxisExtent: 148,
-              itemBuilder: (context, index) {
-                final theme = AppThemeId.values[index];
-                final colors = _themePreviewColors(theme, dark);
-                final active = theme == selected;
-                return Semantics(
-                  selected: active,
-                  button: true,
-                  label: _themeLabel(l, theme),
-                  child: InkWell(
-                    key: ValueKey('theme-${theme.storageKey}'),
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () {
-                      AppHaptics.selection();
-                      _settingsSetVisualTheme(theme);
-                    },
-                    child: AnimatedContainer(
-                      duration: MediaQuery.of(context).disableAnimations
-                          ? Duration.zero
-                          : const Duration(milliseconds: 260),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainer,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: active ? cs.primary : cs.outlineVariant,
-                          width: active ? 2.5 : 1,
-                        ),
+          ),
+          ResponsiveFixedGrid(
+            itemCount: AppThemeId.values.length,
+            mainAxisExtent: 148,
+            itemBuilder: (context, index) {
+              final theme = AppThemeId.values[index];
+              final colors = _themePreviewColors(theme, dark);
+              final active = theme == selected;
+              return Semantics(
+                selected: active,
+                button: true,
+                label: _themeLabel(l, theme),
+                child: InkWell(
+                  key: ValueKey('theme-${theme.storageKey}'),
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () {
+                    AppHaptics.selection();
+                    _settingsSetVisualTheme(theme);
+                  },
+                  child: AnimatedContainer(
+                    duration: MediaQuery.of(context).disableAnimations
+                        ? Duration.zero
+                        : const Duration(milliseconds: 260),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainer,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: active ? cs.primary : cs.outlineVariant,
+                        width: active ? 2.5 : 1,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                theme == AppThemeId.manga ? 1 : 9,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              theme == AppThemeId.manga ? 1 : 9,
+                            ),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(colors: colors),
                               ),
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(colors: colors),
-                                ),
-                                child: Stack(
-                                  children: [
-                                    Positioned(
-                                      left: 8,
-                                      right: 24,
-                                      top: 9,
-                                      child: Container(
-                                        height: 14,
-                                        decoration: BoxDecoration(
-                                          color: colors.last,
-                                          border: theme == AppThemeId.manga
-                                              ? Border.all(
-                                                  color: colors[1],
-                                                  width: 2,
-                                                )
-                                              : null,
-                                          borderRadius: BorderRadius.circular(
-                                            theme == AppThemeId.manga ? 0 : 8,
-                                          ),
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    left: 8,
+                                    right: 24,
+                                    top: 9,
+                                    child: Container(
+                                      height: 14,
+                                      decoration: BoxDecoration(
+                                        color: colors.last,
+                                        border: theme == AppThemeId.manga
+                                            ? Border.all(
+                                                color: colors[1],
+                                                width: 2,
+                                              )
+                                            : null,
+                                        borderRadius: BorderRadius.circular(
+                                          theme == AppThemeId.manga ? 0 : 8,
                                         ),
                                       ),
                                     ),
-                                    Positioned(
-                                      left: 8,
-                                      right: 8,
-                                      bottom: 8,
-                                      child: Container(
-                                        height: 20,
-                                        decoration: BoxDecoration(
-                                          color: colors.first.withValues(
-                                            alpha: 0.78,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            theme == AppThemeId.manga ? 0 : 10,
-                                          ),
+                                  ),
+                                  Positioned(
+                                    left: 8,
+                                    right: 8,
+                                    bottom: 8,
+                                    child: Container(
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: colors.first.withValues(
+                                          alpha: 0.78,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          theme == AppThemeId.manga ? 0 : 10,
                                         ),
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 7),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _themeLabel(l, theme),
-                                  maxLines: 1,
-                                  style: Theme.of(context).textTheme.labelLarge
-                                      ?.copyWith(fontWeight: FontWeight.w800),
-                                ),
+                        ),
+                        const SizedBox(height: 7),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _themeLabel(l, theme),
+                                maxLines: 1,
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(fontWeight: FontWeight.w800),
                               ),
-                              if (active)
-                                Icon(
-                                  Icons.check_circle_rounded,
-                                  size: 17,
-                                  color: cs.primary,
-                                ),
-                            ],
-                          ),
-                          Text(
-                            _themeDescription(l, theme),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: cs.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
+                            ),
+                            if (active)
+                              Icon(
+                                Icons.check_circle_rounded,
+                                size: 17,
+                                color: cs.primary,
+                              ),
+                          ],
+                        ),
+                        Text(
+                          _themeDescription(l, theme),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                      ],
                     ),
                   ),
-                );
-              },
-            ),
-          ],
-        ),
-      ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 

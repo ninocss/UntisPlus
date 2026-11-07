@@ -83,20 +83,24 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
   void _initTimeSlots() {
     // Standard school periods
     const standardPeriods = [
-      (475, 520, '1. Std'), // 07:55 - 08:40
-      (525, 570, '2. Std'), // 08:45 - 09:30
-      (585, 630, '3. Std'), // 09:45 - 10:30
-      (635, 680, '4. Std'), // 10:35 - 11:20
-      (695, 740, '5. Std'), // 11:35 - 12:20
-      (745, 790, '6. Std'), // 12:25 - 13:10
-      (810, 855, '7. Std'), // 13:30 - 14:15
-      (860, 905, '8. Std'), // 14:20 - 15:05
-      (910, 955, '9. Std'), // 15:10 - 15:55
+      (475, 520), // 07:55 - 08:40
+      (525, 570), // 08:45 - 09:30
+      (585, 630), // 09:45 - 10:30
+      (635, 680), // 10:35 - 11:20
+      (695, 740), // 11:35 - 12:20
+      (745, 790), // 12:25 - 13:10
+      (810, 855), // 13:30 - 14:15
+      (860, 905), // 14:20 - 15:05
+      (910, 955), // 15:10 - 15:55
     ];
 
     _timeSlots = [
-      for (final p in standardPeriods)
-        _TimeSlot(startMin: p.$1, endMin: p.$2, label: p.$3),
+      for (var i = 0; i < standardPeriods.length; i++)
+        _TimeSlot(
+          startMin: standardPeriods[i].$1,
+          endMin: standardPeriods[i].$2,
+          label: _l.roomSearchPeriod(i + 1),
+        ),
     ];
     _updateActiveSlotIfToday();
   }
@@ -297,7 +301,7 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
   _TimeSlot get _currentSlot =>
       _timeSlots.isNotEmpty && _selectedSlotIndex < _timeSlots.length
       ? _timeSlots[_selectedSlotIndex]
-      : const _TimeSlot(startMin: 480, endMin: 525, label: '1. Std');
+      : _TimeSlot(startMin: 480, endMin: 525, label: _l.roomSearchPeriod(1));
 
   RoomScheduleSnapshot _snapshotForRoom(SchoolRoom room) {
     final lessons =

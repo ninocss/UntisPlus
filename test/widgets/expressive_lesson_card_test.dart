@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:untisplus/widgets/expressive_lesson_card.dart';
+import 'package:untisplus/main.dart';
 
 void main() {
   testWidgets('ExpressiveLessonCard renders subject badge, teacher and room', (
@@ -68,6 +68,42 @@ void main() {
       );
       expect(
         find.byKey(const ValueKey('expressive-lesson-hatch-pattern')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'ExpressiveLessonCard shows Cancelled badge when locale is English',
+    (tester) async {
+      final prevLocale = appLocaleNotifier.value;
+      appLocaleNotifier.value = 'en';
+      addTearDown(() => appLocaleNotifier.value = prevLocale);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 250,
+                height: 100,
+                child: ExpressiveLessonCard(
+                  subject: 'GE',
+                  teacher: 'Marcus Hill',
+                  room: 'History Hall',
+                  isCancelled: true,
+                  shapeVariant: ExpressiveShapeVariant.shape6,
+                  tone: ExpressiveTone.rose,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Cancelled'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('expressive-lesson-cancelled-pill')),
         findsOneWidget,
       );
     },

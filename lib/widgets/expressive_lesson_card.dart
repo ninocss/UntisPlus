@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../l10n.dart';
+import '../main.dart';
+
 /// The 7 distinct asymmetric corner radius variants from the Figma preview.
 enum ExpressiveShapeVariant {
   shape0, // ma: 34, 34, 12, 34
@@ -286,6 +289,7 @@ class _ExpressiveLessonCardState extends State<ExpressiveLessonCard> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = widget.isDark;
+    final l = appL10nFor(appLocaleNotifier.value);
 
     // Harmonize colors with Untis+ theme and subject color
     final primaryColor = widget.fgColor ?? widget.tone?.inkColor ?? cs.primary;
@@ -513,7 +517,7 @@ class _ExpressiveLessonCardState extends State<ExpressiveLessonCard> {
 
     return Semantics(
       button: true,
-      label: '${widget.subject}, ${widget.teacher}, ${widget.room}${widget.isCancelled ? ', fällt aus' : ''}',
+      label: '${widget.subject}, ${widget.teacher}, ${widget.room}${widget.isCancelled ? l.expressiveLessonSemanticsCancelled : ''}',
       child: Listener(
         behavior: HitTestBehavior.translucent,
         onPointerDown: (_) => _handlePointerDown(),
@@ -594,7 +598,7 @@ class _ExpressiveLessonCardState extends State<ExpressiveLessonCard> {
                           ),
                         ),
                         child: Text(
-                          'Entfällt',
+                          l.expressiveLessonCancelled,
                           style: TextStyle(
                             color: isDark ? Colors.white : const Color(0xFF633B48),
                             fontSize: 8.0,
