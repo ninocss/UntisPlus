@@ -604,6 +604,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       lessonShowRoomNotifier,
                       lessonCompactModeNotifier,
                       lessonCleanDesignNotifier,
+                      lessonExpressiveDesignNotifier,
                       lessonCancelledPatternNotifier,
                       cancelledLessonColorNotifier,
                       monochromeLessonsNotifier,
@@ -822,6 +823,22 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       subtitle: l.settingsLessonCleanDesignDesc,
                       value: cleanDesign,
                       onChanged: _settingsSetLessonCleanDesign,
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: lessonExpressiveDesignNotifier,
+                  builder: (context, expressive, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.auto_awesome_motion_rounded,
+                      iconBackgroundColor: cs.tertiaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onTertiaryContainer,
+                      title: l.settingsLessonExpressiveDesign,
+                      subtitle: l.settingsLessonExpressiveDesignDesc,
+                      value: expressive,
+                      onChanged: _settingsSetLessonExpressiveDesign,
                     );
                   },
                 ),

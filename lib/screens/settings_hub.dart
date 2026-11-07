@@ -166,6 +166,11 @@ final _lessonCleanDesignPreference = boolPreference(
   defaultValue: false,
   notifier: lessonCleanDesignNotifier,
 );
+final _lessonExpressiveDesignPreference = boolPreference(
+  key: 'lessonExpressiveDesign',
+  defaultValue: false,
+  notifier: lessonExpressiveDesignNotifier,
+);
 final _glowEffectsPreference = boolPreference(
   key: 'glowEffectsEnabled',
   defaultValue: false,
@@ -505,6 +510,12 @@ Future<void> _settingsSetLessonCardStyle(int value) =>
 Future<void> _settingsSetLessonCleanDesign(bool value) =>
     SettingsStore.instance.write(_lessonCleanDesignPreference, value);
 
+Future<void> _settingsSetLessonExpressiveDesign(bool value) =>
+    SettingsStore.instance.write(_lessonExpressiveDesignPreference, value);
+
+Future<void> settingsSetLessonExpressiveDesign(bool value) =>
+    _settingsSetLessonExpressiveDesign(value);
+
 Future<void> _settingsSetGlowEffectsEnabled(bool value) =>
     SettingsStore.instance.write(_glowEffectsPreference, value);
 
@@ -670,6 +681,12 @@ Future<void> _settingsSetAiProvider(String provider) async {
   aiProvider = _normalizeAiProvider(provider);
   await SettingsStore.instance.writeRaw('aiProvider', aiProvider);
 
+  if (aiProvider == 'custom') {
+    // Restore the free-form model id the user entered for this provider.
+    aiModel = aiCustomModel;
+    await SettingsStore.instance.writeRaw('aiModel', aiModel);
+    return;
+  }
   final models = _modelsForProvider(
     aiProvider,
     customCompatibility: aiCustomCompatibility,
@@ -683,6 +700,10 @@ Future<void> _settingsSetAiProvider(String provider) async {
 Future<void> _settingsSetAiModel(String model) async {
   aiModel = model;
   await SettingsStore.instance.writeRaw('aiModel', aiModel);
+  if (aiProvider == 'custom') {
+    aiCustomModel = model;
+    await SettingsStore.instance.writeRaw('aiCustomModel', model);
+  }
 }
 
 Future<void> _settingsSetAiCustomCompatibility(String compatibility) async {
@@ -691,6 +712,7 @@ Future<void> _settingsSetAiCustomCompatibility(String compatibility) async {
     'aiCustomCompatibility',
     aiCustomCompatibility,
   );
+  if (aiProvider == 'custom') return;
 
   final models = _modelsForProvider(
     aiProvider,
@@ -784,6 +806,7 @@ Future<void> _settingsSyncFromPrefs() async {
   await store.load(_monochromeLessonColorPreference);
   await store.load(_lessonCardStylePreference);
   await store.load(_lessonCleanDesignPreference);
+  await store.load(_lessonExpressiveDesignPreference);
   await store.load(_glowEffectsPreference);
   await store.load(_lessonBlurEnabledPreference);
   await store.load(_lessonBlurAmountPreference);

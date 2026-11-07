@@ -1,80 +1,94 @@
-# Miscellaneous
+# ==============================================================================
+# Untis+ .gitignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Operating System & General Temporary Files
+# ------------------------------------------------------------------------------
 *.class
 *.log
 *.pyc
 *.swp
+*.swo
+*~
+*.bak
+*.tmp
 .DS_Store
+Thumbs.db
+Thumbs.db:encryptable
+desktop.ini
+ehthumbs.db
 .atom/
-.build/
 .buildlog/
 .history
 .svn/
 .swiftpm/
-migrate_working_dir/
-.vscode/
-tooling/
-.github/skills/
-.claude
 
-.idea/
-.dart_tool/
-
-# IntelliJ related
+# ------------------------------------------------------------------------------
+# IDE & Editor Files
+# ------------------------------------------------------------------------------
 *.iml
 *.ipr
 *.iws
 .idea/
+.vscode/
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# ------------------------------------------------------------------------------
+# Flutter / Dart Build & Package Artifacts
+# ------------------------------------------------------------------------------
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
 /build/
 /coverage/
 lib/l10n/generated/
+**/doc/api/
+**/ios/Flutter/.last_build_id
 
-# Symbolication related
+# ------------------------------------------------------------------------------
+# Obfuscation & Symbolication
+# ------------------------------------------------------------------------------
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
-plan.md
 
+# ------------------------------------------------------------------------------
+# Project Secrets, Credentials & Local Config
+# ------------------------------------------------------------------------------
+lib/core/api_keys.dart
+*.env
+*.env.*
+android/.gradle/
 android/local.properties
-android/app/build.gradle.kts
+android/key.properties
 android/app/release-key.jks
 android/app/*.jks
 android/app/*.keystore
+android/build/reports/
+security-results/
+
+# ------------------------------------------------------------------------------
+# AI Agents, Scratchpads & Temporary Mockups
+# ------------------------------------------------------------------------------
+.superpowers/
+docs/superpowers/
+.agent/
+.gemini/
+.claude/
 .aider*
-android/build/reports/problems/problems-report.html
-
-*.py
-*.txt
-*.md
-
-.metadata
-CHANGELOG.md
-devtools_options.yaml
-analysis_options.yaml
 .codex-remote-attachments/
 codex/
 .artifacts/
-windows/
-web/
-linux/
-macos/
-changelog.json
+migrate_working_dir/
+tooling/
+.github/skills/
+plan.md
+New_Lesson_screen_preview/
 
-# F-Droid / IzzyOnDroid fastlane metadata – must be tracked for store listings
-!fastlane/**/*.txt
-!fastlane/**/*.png
-!fastlane/**/*.md
-docs/
-security-results/
-
-# API Keys
-
-lib/core/api_keys.dart
+# ------------------------------------------------------------------------------
+# Flutter Project Metadata (kept untracked per repository convention)
+# ------------------------------------------------------------------------------
+.metadata
+devtools_options.yaml

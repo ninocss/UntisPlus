@@ -10,6 +10,7 @@ class _AiComposer extends StatefulWidget {
   final VoidCallback? onAttach;
   final ValueChanged<int> onRemoveAttachment;
   final VoidCallback onSend;
+  final VoidCallback? onStop;
   final VoidCallback onClear;
 
   const _AiComposer({
@@ -22,6 +23,7 @@ class _AiComposer extends StatefulWidget {
     required this.onAttach,
     required this.onRemoveAttachment,
     required this.onSend,
+    this.onStop,
     required this.onClear,
   });
 
@@ -69,50 +71,49 @@ class _AiComposerState extends State<_AiComposer> {
     final focused = widget.focusNode.hasFocus;
     final hasText = widget.controller.text.trim().isNotEmpty;
     final canSend = hasText && !widget.thinking;
-    final duration = _aiMotionDuration(
-      context,
-      normal: const Duration(milliseconds: 230),
-    );
-    final bottom = keyboardOpen
-        ? mq.viewInsets.bottom + 12
-        : mq.padding.bottom + 14;
+    final duration = _aiFastMotionDuration(context);
+    final bottomInset = keyboardOpen
+        ? mq.viewInsets.bottom + 8
+        : (mq.padding.bottom > 0 ? mq.padding.bottom + 6 : 14.0);
 
     return AnimatedPadding(
       duration: duration,
       curve: Curves.easeOutCubic,
-      padding: EdgeInsets.fromLTRB(16, 8, 16, bottom),
+      padding: EdgeInsets.fromLTRB(14, 4, 14, bottomInset),
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxWidth: widget.mode == _AiMode.chat ? 760 : 900,
+            maxWidth: _aiContentMaxWidth(context, _AiMode.chat),
           ),
-          child: AnimatedScale(
-            duration: duration,
-            scale: focused && !_aiReduceMotion(context) ? 1.005 : 1,
-            child: ThemedSurface(
-              borderRadius: BorderRadius.circular(_aiRadius(29)),
-              color: (focused
-                      ? cs.surfaceContainerHigh
-                      : cs.surfaceContainer)
-                  .withValues(alpha: focused ? 0.9 : 0.82),
-              border: Border.all(
-                color: (focused ? cs.primary : cs.outlineVariant)
-                    .withValues(alpha: focused ? 0.28 : 0.2),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (widget.attachments.isNotEmpty) ...[
-                      Align(
+          child: ThemedSurface(
+            blur: true,
+            borderRadius: BorderRadius.circular(_aiRadius(28)),
+            color: (focused
+                    ? cs.surfaceContainerHigh
+                    : cs.surfaceContainer)
+                .withValues(alpha: focused ? 0.94 : 0.88),
+            border: Border.all(
+              color: (focused ? cs.primary : cs.outlineVariant)
+                  .withValues(alpha: focused ? 0.38 : 0.22),
+              width: focused ? 1.2 : 0.8,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.attachments.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                      child: Align(
                         alignment: Alignment.centerLeft,
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
                           child: Row(
                             children: [
                               for (final item in widget.attachments.indexed) ...[
-                                if (item.$1 > 0) const SizedBox(width: 6),
+                                if (item.$1 > 0) const SizedBox(width: 8),
                                 _AiAttachmentChip(
                                   key: ValueKey(
                                     '${item.$2.name}-${item.$1}',
@@ -127,149 +128,145 @@ class _AiComposerState extends State<_AiComposer> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 6),
-                    ],
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (widget.mode == _AiMode.chat)
-                          Semantics(
-                            button: true,
-                            label: appL10nFor(
-                              appLocaleNotifier.value,
-                            ).aiAttachFile,
-                            child: IconButton(
-                              onPressed: widget.thinking ? null : widget.onAttach,
-                              constraints: const BoxConstraints(
-                                minWidth: 48,
-                                minHeight: 48,
-                              ),
-                              icon: const Icon(Icons.add_rounded),
-                            ),
-                          ),
-                        Expanded(
-                          child: TextField(
-                            controller: widget.controller,
-                            focusNode: widget.focusNode,
-                            enabled: !widget.thinking,
-                            minLines: 1,
-                            maxLines: 5,
-                            textInputAction: TextInputAction.search,
-                            onSubmitted: (_) {
-                              if (canSend) widget.onSend();
-                            },
-                            style: untisThemeTextStyle(
-                              context,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: cs.onSurface,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: widget.hintText,
-                              hintStyle: untisThemeTextStyle(
-                                context,
-                                fontSize: 16,
-                                color: cs.onSurfaceVariant,
-                              ),
-                              filled: false,
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 12,
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (widget.controller.text.isNotEmpty &&
-                            !widget.thinking)
-                          Semantics(
-                            button: true,
-                            label: appL10nFor(
-                              appLocaleNotifier.value,
-                            ).aiClearInput,
-                            child: IconButton(
-                              onPressed: widget.onClear,
-                              constraints: const BoxConstraints(
-                                minWidth: 44,
-                                minHeight: 48,
-                              ),
-                              icon: Icon(
-                                Icons.close_rounded,
-                                size: 20,
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        const SizedBox(width: 4),
-                        Semantics(
-                          button: true,
-                          enabled: canSend,
-                          label: widget.mode == _AiMode.chat
-                              ? appL10nFor(appLocaleNotifier.value).aiTabChat
-                              : appL10nFor(
-                                  appLocaleNotifier.value,
-                                ).aiTabAnalysis,
-                          child: AnimatedContainer(
-                            duration: duration,
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: canSend || widget.thinking
-                                  ? cs.primary
-                                  : cs.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(
-                                _aiRadius(19),
-                              ),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(
-                                  _aiRadius(19),
-                                ),
-                                onTap: canSend ? widget.onSend : null,
-                                child: Center(
-                                  child: AnimatedSwitcher(
-                                    duration: duration,
-                                    transitionBuilder: (child, animation) =>
-                                        FadeTransition(
-                                          opacity: animation,
-                                          child: ScaleTransition(
-                                            scale: animation,
-                                            child: child,
-                                          ),
-                                        ),
-                                    child: widget.thinking
-                                        ? SizedBox(
-                                            key: const ValueKey('thinking'),
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.4,
-                                              color: cs.onPrimary,
-                                            ),
-                                          )
-                                        : Icon(
-                                            widget.mode == _AiMode.chat
-                                                ? Icons.arrow_upward_rounded
-                                                : Icons.search_rounded,
-                                            key: ValueKey(widget.mode),
-                                            color: canSend
-                                                ? cs.onPrimary
-                                                : cs.onSurfaceVariant,
-                                          ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
                   ],
-                ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (widget.onAttach != null)
+                        Semantics(
+                          button: true,
+                          label: appL10nFor(
+                            appLocaleNotifier.value,
+                          ).aiAttachFile,
+                          child: IconButton.filledTonal(
+                            onPressed: widget.thinking ? null : widget.onAttach,
+                            style: IconButton.styleFrom(
+                              backgroundColor: cs.surfaceContainerHighest
+                                  .withValues(alpha: 0.6),
+                              foregroundColor: cs.onSurfaceVariant,
+                              padding: EdgeInsets.zero,
+                              minimumSize: const Size(42, 42),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  _aiRadius(14),
+                                ),
+                              ),
+                            ),
+                            icon: const Icon(Icons.add_rounded, size: 22),
+                          ),
+                        ),
+                      Expanded(
+                        child: TextField(
+                          controller: widget.controller,
+                          focusNode: widget.focusNode,
+                          enabled: !widget.thinking,
+                          minLines: 1,
+                          maxLines: 5,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) {
+                            if (canSend) widget.onSend();
+                          },
+                          style: untisThemeTextStyle(
+                            context,
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w500,
+                            color: cs.onSurface,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: widget.hintText,
+                            hintStyle: untisThemeTextStyle(
+                              context,
+                              fontSize: 15.5,
+                              color: cs.onSurfaceVariant,
+                            ),
+                            filled: false,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 10,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (widget.controller.text.isNotEmpty &&
+                          !widget.thinking)
+                        Semantics(
+                          button: true,
+                          label: appL10nFor(
+                            appLocaleNotifier.value,
+                          ).aiClearInput,
+                          child: IconButton(
+                            onPressed: widget.onClear,
+                            visualDensity: VisualDensity.compact,
+                            icon: Icon(
+                              Icons.close_rounded,
+                              size: 18,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(width: 4),
+                      widget.thinking
+                          ? Semantics(
+                              button: true,
+                              label: appL10nFor(
+                                appLocaleNotifier.value,
+                              ).cancel,
+                              child: IconButton.filled(
+                                onPressed: widget.onStop,
+                                style: IconButton.styleFrom(
+                                  backgroundColor: cs.errorContainer,
+                                  foregroundColor: cs.onErrorContainer,
+                                  minimumSize: const Size(42, 42),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      _aiRadius(14),
+                                    ),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.stop_rounded,
+                                  size: 22,
+                                ),
+                              ),
+                            )
+                          : Semantics(
+                              button: true,
+                              enabled: canSend,
+                              label: appL10nFor(
+                                appLocaleNotifier.value,
+                              ).aiTabChat,
+                              child: IconButton.filled(
+                                onPressed: canSend ? widget.onSend : null,
+                                style: IconButton.styleFrom(
+                                  backgroundColor: canSend
+                                      ? cs.primary
+                                      : cs.surfaceContainerHighest
+                                          .withValues(alpha: 0.6),
+                                  foregroundColor: canSend
+                                      ? cs.onPrimary
+                                      : cs.onSurfaceVariant.withValues(
+                                          alpha: 0.45,
+                                        ),
+                                  minimumSize: const Size(42, 42),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      _aiRadius(14),
+                                    ),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.arrow_upward_rounded,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),

@@ -323,8 +323,48 @@ String aiLocalModelPath = '';
 double aiTemperature = 0.2;
 int aiMaxTokens = 2600;
 double aiTopP = 0.95;
-String aiPersona = 'helpful';
+
+/// Free-form model id for the custom provider. Kept separately from
+/// [aiModel] so that switching providers never loses it.
+String aiCustomModel = '';
+
+/// Extra user instructions appended to the assistant prompt.
+String aiCustomInstructions = '';
+
+/// Whether per-subject grade averages may be added to the assistant prompt.
+bool aiShareGrades = false;
 final ValueNotifier<bool> aiEnabledNotifier = ValueNotifier(true);
+
+/// Maps the removed "persona" setting onto a custom instruction once and
+/// resets a stored prompt that is identical to an old built-in default so the
+/// improved default applies.
+Future<void> _migrateAiPromptSettingsV2(SharedPreferences prefs) async {
+  final persona = prefs.getString('aiPersona');
+  if (persona != null) {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final migrated = switch (persona) {
+      'strict' => l.aiPersonaStrict,
+      'buddy' => l.aiPersonaBuddy,
+      _ => '',
+    };
+    if (migrated.isNotEmpty && aiCustomInstructions.trim().isEmpty) {
+      aiCustomInstructions = migrated;
+      await prefs.setString('aiCustomInstructions', aiCustomInstructions);
+    }
+    await prefs.remove('aiPersona');
+  }
+  final stored = aiSystemPromptTemplate.trim();
+  if (stored.isNotEmpty) {
+    final isLegacyDefault = ['de', 'en', 'es', 'fr'].any(
+      (code) => _legacyDefaultAiPromptTemplate(appL10nFor(code)).trim() == stored,
+    );
+    if (isLegacyDefault) {
+      aiSystemPromptTemplate = '';
+      await prefs.setString('aiSystemPromptTemplate', '');
+    }
+  }
+  await prefs.setBool('aiPromptMigratedV2', true);
+}
 
 Future<void> loadAiPreferences(
   SharedPreferences prefs, {
@@ -351,7 +391,13 @@ Future<void> loadAiPreferences(
   aiTemperature = prefs.getDouble('aiTemperature') ?? aiTemperature;
   aiMaxTokens = prefs.getInt('aiMaxTokens') ?? aiMaxTokens;
   aiTopP = prefs.getDouble('aiTopP') ?? aiTopP;
-  aiPersona = prefs.getString('aiPersona') ?? aiPersona;
+  aiCustomModel = prefs.getString('aiCustomModel') ?? aiCustomModel;
+  aiCustomInstructions =
+      prefs.getString('aiCustomInstructions') ?? aiCustomInstructions;
+  aiShareGrades = prefs.getBool('aiShareGrades') ?? aiShareGrades;
+  if (!(prefs.getBool('aiPromptMigratedV2') ?? false)) {
+    await _migrateAiPromptSettingsV2(prefs);
+  }
   if (aiLocalModelPath.isNotEmpty) {
     // A stale or tampered path (file deleted, moved, truncated or replaced
     // with something that is not a GGUF) must never reach the native
@@ -372,6 +418,12 @@ Future<void> loadAiPreferences(
     }
   }
   final savedModel = prefs.getString('aiModel') ?? '';
+  if (_normalizeAiProvider(aiProvider) == 'custom') {
+    // A custom endpoint serves arbitrary model ids, so the saved id must never
+    // be validated against (or replaced by) a built-in suggestion list.
+    aiModel = savedModel.isNotEmpty ? savedModel : aiCustomModel;
+    return;
+  }
   final availableModels = _modelsForProvider(
     aiProvider,
     customCompatibility: aiCustomCompatibility,
@@ -398,6 +450,9 @@ Future<void> saveAiProviderPreferences(SharedPreferences prefs) async {
     prefs.setString('aiCustomCompatibility', aiCustomCompatibility),
     prefs.setString('aiCustomBaseUrl', aiCustomBaseUrl),
     prefs.setString('aiSystemPromptTemplate', aiSystemPromptTemplate),
+    prefs.setString('aiCustomModel', aiCustomModel),
+    prefs.setString('aiCustomInstructions', aiCustomInstructions),
+    prefs.setBool('aiShareGrades', aiShareGrades),
     prefs.setString('aiLocalModelPath', aiLocalModelPath),
     CredentialVault.instance.writeAiApiKey('gemini', geminiApiKey),
     CredentialVault.instance.writeAiApiKey('openai', openAiApiKey),
@@ -607,6 +662,8 @@ String _localizedAiProviderLabel(AppL10n l, String provider) {
       return l.settingsAiProviderOpenAi;
     case 'mistral':
       return l.settingsAiProviderMistral;
+    case 'custom':
+      return l.settingsAiProviderCustom;
     case 'local':
       return l.settingsAiProviderLocal;
     case 'gemini':
@@ -614,6 +671,10 @@ String _localizedAiProviderLabel(AppL10n l, String provider) {
       return l.settingsAiProviderGemini;
   }
 }
+
+@visibleForTesting
+String localizedAiProviderLabel(AppL10n l, String provider) =>
+    _localizedAiProviderLabel(l, provider);
 
 String _providerAwareMissingApiKeyMessage(AppL10n l, String provider) {
   return '${l.aiNoApiKey} (${_localizedAiProviderLabel(l, provider)})';
@@ -694,6 +755,7 @@ final ValueNotifier<int> customColorSeedNotifier = ValueNotifier(0xFF0F766E);
 
 final ValueNotifier<int> lessonCardStyleNotifier = ValueNotifier(0);
 final ValueNotifier<bool> lessonCleanDesignNotifier = ValueNotifier(false);
+final ValueNotifier<bool> lessonExpressiveDesignNotifier = ValueNotifier(false);
 final ValueNotifier<bool> glowEffectsEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<bool> lessonBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> lessonBlurAmountNotifier = ValueNotifier(12.0);

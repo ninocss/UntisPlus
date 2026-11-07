@@ -51,6 +51,7 @@ class AiRequestSpec {
     this.modelOverride,
     this.missingApiKeyMessage = 'API key missing',
     this.customBaseUrlMissingMessage = 'Custom base URL missing',
+    this.customModelMissingMessage = 'Custom model name missing',
     this.localModelMissingMessage = 'Local model is not configured',
     this.localProviderUnsupportedMessage = 'Local provider is not supported',
     this.unsupportedAttachmentMessage,
@@ -70,6 +71,7 @@ class AiRequestSpec {
   final String noReplyMessage;
   final String missingApiKeyMessage;
   final String customBaseUrlMissingMessage;
+  final String customModelMissingMessage;
   final String localModelMissingMessage;
   final String localProviderUnsupportedMessage;
   final String Function(String mimeType)? unsupportedAttachmentMessage;
@@ -178,6 +180,13 @@ class AiRequestCoordinator {
 
     final configuredModel = spec.modelOverride?.trim();
     final runtimeModel = runtime.model.trim();
+    if (provider == 'custom' &&
+        (configuredModel == null || configuredModel.isEmpty) &&
+        runtimeModel.isEmpty) {
+      // A custom endpoint has no meaningful default model; never fall back to
+      // a built-in Gemini/OpenAI id the user did not choose.
+      throw Exception('CONFIG: ${spec.customModelMissingMessage}');
+    }
     final model = configuredModel != null && configuredModel.isNotEmpty
         ? configuredModel
         : runtimeModel.isNotEmpty

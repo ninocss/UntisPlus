@@ -539,12 +539,15 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     final isLocal = _normalizeAiProvider(aiProvider) == 'local';
     final template = aiSystemPromptTemplate.trim().isNotEmpty
         ? aiSystemPromptTemplate
-        : _buildDefaultAiPromptTemplate(l, compact: isLocal);
+        : isLocal
+        ? _buildLocalAiPromptTemplate(l)
+        : _buildDefaultAiPromptTemplate(l);
     final resolved = _replaceAiPromptVariables(template);
+    final suffix = isLocal ? _localChatPromptSuffix(l) : _chatPromptSuffix(l);
 
     return '''$resolved
 
-${_chatPromptSuffix(l)}''';
+$suffix''';
   }
 
   String _daySummaryForPrompt(DateTime date) {

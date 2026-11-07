@@ -89,6 +89,9 @@ String _formatAiErrorDetail(Object error, AppL10n l) {
   if (message.contains('API:')) {
     return '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}';
   }
+  if (message.contains('AI:')) {
+    return message.replaceFirst('Exception: AI: ', '');
+  }
   return '${l.aiConnectionError} $error';
 }
 

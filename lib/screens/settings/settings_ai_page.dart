@@ -17,7 +17,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     _reloadFromPrefs();
     if (widget.openPromptEditor) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showPromptDialog();
+        if (mounted) _showCustomInstructionsDialog();
       });
     }
   }
@@ -31,16 +31,22 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     final prefs = SettingsStore.instance.preferences;
     await loadAiPreferences(prefs);
 
-    final validModels = _modelsForProvider(
-      aiProvider,
-      customCompatibility: aiCustomCompatibility,
-    );
-    if (!validModels.contains(aiModel)) {
-      aiModel = _defaultModelForProvider(
+    if (aiProvider == 'custom') {
+      aiModel = aiCustomModel.isNotEmpty
+          ? aiCustomModel
+          : (prefs.getString('aiModel') ?? '');
+    } else {
+      final validModels = _modelsForProvider(
         aiProvider,
         customCompatibility: aiCustomCompatibility,
       );
-      await prefs.setString('aiModel', aiModel);
+      if (!validModels.contains(aiModel)) {
+        aiModel = _defaultModelForProvider(
+          aiProvider,
+          customCompatibility: aiCustomCompatibility,
+        );
+        await prefs.setString('aiModel', aiModel);
+      }
     }
     if (mounted) setState(() {});
   }
@@ -202,17 +208,6 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Center(
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: cs.outlineVariant,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
                     Row(
                       children: [
                         Icon(
@@ -327,54 +322,38 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         final Color cardColor;
         final Border cardBorder;
         if (isActive) {
-          cardColor = cs.primaryContainer.withValues(alpha: 0.5);
+          cardColor = cs.surfaceContainerHigh;
           cardBorder = Border.all(
-            color: cs.primary.withValues(alpha: 0.55),
-            width: 1.4,
+            color: cs.primary,
+            width: 1.5,
           );
         } else if (hasError) {
-          cardColor = cs.errorContainer.withValues(alpha: 0.35);
+          cardColor = cs.surfaceContainer;
           cardBorder = Border.all(
-            color: cs.error.withValues(alpha: 0.3),
+            color: cs.error.withValues(alpha: 0.4),
             width: 1,
           );
         } else if (isDownloading) {
-          cardColor = cs.primaryContainer.withValues(alpha: 0.28);
+          cardColor = cs.surfaceContainer;
           cardBorder = Border.all(
-            color: cs.primary.withValues(alpha: 0.4),
-            width: 1,
-          );
-        } else if (downloaded) {
-          cardColor = cs.secondaryContainer.withValues(alpha: 0.32);
-          cardBorder = Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.35),
-            width: 1,
+            color: cs.primary.withValues(alpha: 0.5),
+            width: 1.2,
           );
         } else {
-          cardColor = cs.surfaceContainerHigh.withValues(alpha: 0.55);
+          cardColor = cs.surfaceContainer;
           cardBorder = Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.35),
+            color: cs.outlineVariant.withValues(alpha: 0.3),
             width: 1,
           );
         }
 
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             border: cardBorder,
-            boxShadow:
-                isActive && untisThemeTokensOf(context).glowEffectsEnabled
-                ? [
-                    BoxShadow(
-                      color: cs.primary.withValues(alpha: 0.18),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ]
-                : null,
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -495,55 +474,35 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     required bool isDownloading,
   }) {
     final cs = Theme.of(ctx).colorScheme;
-    final BoxDecoration iconDecoration;
+    final Color iconBg;
     final IconData icon;
     final Color iconColor;
 
     if (isActive) {
-      iconDecoration = BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [cs.primary, cs.tertiary],
-        ),
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: _glowShadows(context, [
-          BoxShadow(
-            color: cs.primary.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ]),
-      );
-      icon = Icons.check_rounded;
-      iconColor = cs.onPrimary;
-    } else if (isDownloading) {
-      iconDecoration = BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(15),
-      );
-      icon = Icons.download_rounded;
-      iconColor = cs.onPrimaryContainer;
-    } else if (downloaded) {
-      iconDecoration = BoxDecoration(
-        color: cs.secondaryContainer,
-        borderRadius: BorderRadius.circular(15),
-      );
+      iconBg = cs.primaryContainer;
       icon = Icons.check_circle_rounded;
-      iconColor = cs.onSecondaryContainer;
+      iconColor = cs.primary;
+    } else if (isDownloading) {
+      iconBg = cs.primaryContainer.withValues(alpha: 0.6);
+      icon = Icons.downloading_rounded;
+      iconColor = cs.primary;
+    } else if (downloaded) {
+      iconBg = cs.surfaceContainerHighest;
+      icon = Icons.check_rounded;
+      iconColor = cs.onSurfaceVariant;
     } else {
-      iconDecoration = BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(15),
-      );
+      iconBg = cs.surfaceContainerHighest;
       icon = Icons.download_rounded;
       iconColor = cs.primary;
     }
 
     return Container(
-      width: 46,
-      height: 46,
-      decoration: iconDecoration,
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: iconBg,
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Icon(icon, size: 22, color: iconColor),
     );
   }
@@ -701,7 +660,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     );
   }
 
-  /// Expressive download progress bar with percentage, bytes and speed.
+  /// Expressive download progress bar with percentage, bytes, speed and remaining time.
   Widget _buildDownloadProgress(
     BuildContext ctx,
     LocalModelInfo model,
@@ -709,12 +668,12 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     double progress,
   ) {
     final cs = Theme.of(ctx).colorScheme;
-    final tt = Theme.of(ctx).textTheme;
     final pct = (progress.clamp(0.0, 1.0) * 100).round();
     final downloadState = _downloadCoordinator.stateFor(model.id);
     final received = downloadState.received;
     final total = downloadState.total;
     final speed = downloadState.bytesPerSecond;
+    final remaining = downloadState.estimatedRemainingTime;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -724,115 +683,105 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
             Expanded(
               child: Text(
                 l.settingsAiLocalModelDownloading,
-                style: tt.labelLarge?.copyWith(
+                style: GoogleFonts.outfit(
                   color: cs.primary,
                   fontWeight: FontWeight.w700,
+                  fontSize: 13,
                 ),
               ),
             ),
             Text(
               '$pct%',
-              style: tt.titleMedium?.copyWith(
+              style: GoogleFonts.jetBrainsMono(
                 fontWeight: FontWeight.w800,
+                fontSize: 14,
                 color: cs.primary,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: progress.clamp(0.0, 1.0)),
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, _) {
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: Stack(
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: progress.clamp(0.0, 1.0),
+            minHeight: 6,
+            backgroundColor: cs.surfaceContainerHighest,
+            color: cs.primary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          runSpacing: 4,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.speed_rounded, size: 14, color: cs.onSurfaceVariant),
+                const SizedBox(width: 4),
+                Text(
+                  '${_formatByteSize(speed.round())}/s',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 11,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            if (remaining != null)
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(height: 10, color: cs.surfaceContainerHighest),
-                  FractionallySizedBox(
-                    widthFactor: value.clamp(0.0, 1.0),
-                    child: Container(
-                      height: 10,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [cs.primary, cs.tertiary],
-                        ),
-                        borderRadius: BorderRadius.circular(999),
-                        boxShadow: _glowShadows(context, [
-                          BoxShadow(
-                            color: cs.primary.withValues(alpha: 0.4),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]),
-                      ),
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 14,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    formatModelRemainingTime(remaining, l),
+                    style: GoogleFonts.outfit(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: cs.primary,
                     ),
                   ),
                 ],
               ),
-            );
-          },
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Icon(Icons.speed_rounded, size: 14, color: cs.onSurfaceVariant),
-            const SizedBox(width: 4),
-            Text(
-              '${_formatByteSize(speed.round())}/s',
-              style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            const SizedBox(width: 12),
             if (total > 0)
               Text(
                 '${_formatByteSize(received)} / ${_formatByteSize(total)}',
-                style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 11,
+                  color: cs.onSurfaceVariant,
+                ),
               ),
-            const Spacer(),
-            IconButton.filledTonal(
-              onPressed: () => _cancelDownload(model.id),
-              tooltip: l.cancel,
-              icon: const Icon(Icons.close_rounded, size: 18),
-            ),
           ],
+        ),
+        const SizedBox(height: 6),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () => _cancelDownload(model.id),
+            icon: const Icon(Icons.close_rounded, size: 16),
+            label: Text(l.cancel),
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              foregroundColor: cs.error,
+            ),
+          ),
         ),
       ],
     );
   }
 
-  void _showProviderDialog() {
-    final l = appL10nFor(appLocaleNotifier.value);
-    _showUnifiedOptionSheet<String>(
-      context: context,
-      title: l.settingsAiProvider,
-      options: kSupportedAiProviders
-          .map(
-            (provider) => _SheetOption(
-              value: provider,
-              title: _localizedAiProviderLabel(l, provider),
-              icon: provider == 'gemini'
-                  ? Icons.auto_awesome_rounded
-                  : provider == 'openai'
-                  ? Icons.chat_bubble_outline_rounded
-                  : provider == 'mistral'
-                  ? Icons.cloud_rounded
-                  : provider == 'local'
-                  ? Icons.memory_rounded
-                  : Icons.settings_ethernet_rounded,
-              selected: aiProvider == provider,
-            ),
-          )
-          .toList(),
-    ).then((value) async {
-      if (value != null) {
-        await _settingsSetAiProvider(value);
-        await _reloadFromPrefs();
-      }
-    });
-  }
-
   void _showModelDialog() {
+    if (aiProvider == 'custom') {
+      _showCustomModelDialog();
+      return;
+    }
     final l = appL10nFor(appLocaleNotifier.value);
     final models = _modelsForProvider(
       aiProvider,
@@ -857,6 +806,113 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         await _reloadFromPrefs();
       }
     });
+  }
+
+  void _showCustomModelDialog() {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final ctrl = TextEditingController(
+      text: aiCustomModel.isNotEmpty ? aiCustomModel : aiModel,
+    );
+    final suggestions = _modelsForProvider(
+      'custom',
+      customCompatibility: aiCustomCompatibility,
+    );
+
+    _showUnifiedSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      child: StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final cs = Theme.of(ctx).colorScheme;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              12,
+              20,
+              MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.settingsAiCustomModel,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  l.settingsAiCustomModelDesc,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: ctrl,
+                  style: GoogleFonts.jetBrainsMono(fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: l.settingsAiCustomModelHint,
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l.settingsAiCustomModelSuggestions,
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: suggestions.map((sug) {
+                    return ActionChip(
+                      label: Text(
+                        sug,
+                        style: GoogleFonts.jetBrainsMono(fontSize: 11),
+                      ),
+                      onPressed: () {
+                        ctrl.text = sug;
+                        setDialogState(() {});
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                _buildAiSheetActions([
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(l.cancel),
+                  ),
+                  FilledButton(
+                    onPressed: () async {
+                      final val = ctrl.text.trim();
+                      await _settingsSetAiModel(val);
+                      if (!ctx.mounted) return;
+                      Navigator.pop(ctx);
+                      _reloadFromPrefs();
+                    },
+                    child: Text(l.save),
+                  ),
+                ]),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _showCompatibilityDialog() {
@@ -963,20 +1019,16 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     );
   }
 
-  void _showPromptDialog() {
+  void _showCustomInstructionsDialog() {
     final l = appL10nFor(appLocaleNotifier.value);
-    final defaultTemplate = _buildDefaultAiPromptTemplate(l);
-    final ctrl = TextEditingController(
-      text: aiSystemPromptTemplate.isEmpty
-          ? defaultTemplate
-          : aiSystemPromptTemplate,
-    );
-
+    final ctrl = TextEditingController(text: aiCustomInstructions);
     _showUnifiedSheet<void>(
       context: context,
       isScrollControlled: true,
-      child: Builder(
-        builder: (ctx) {
+      child: StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final cs = Theme.of(ctx).colorScheme;
+          final tokenCount = estimateLocalTokens(ctrl.text);
           return Padding(
             padding: EdgeInsets.fromLTRB(
               20,
@@ -989,55 +1041,379 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  l.settingsAiPromptEditTitle,
+                  l.settingsAiInstructions,
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.w800,
-                    fontSize: 18,
+                    fontSize: 20,
+                    letterSpacing: -0.4,
                   ),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 260,
-                  child: TextField(
-                    controller: ctrl,
-                    minLines: 8,
-                    maxLines: 16,
-                    style: GoogleFonts.jetBrainsMono(fontSize: 12.5),
-                    decoration: InputDecoration(
-                      filled: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
+                const SizedBox(height: 4),
+                Text(
+                  l.settingsAiInstructionsDesc,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: ctrl,
+                  minLines: 3,
+                  maxLines: 6,
+                  onChanged: (_) => setDialogState(() {}),
+                  style: GoogleFonts.outfit(fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: l.settingsAiInstructionsHint,
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
-                _buildAiSheetActions([
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: Text(l.cancel),
-                  ),
-                  TextButton(
-                    onPressed: () => ctrl.text = defaultTemplate,
-                    child: Text(l.settingsAiPromptReset),
-                  ),
-                  FilledButton(
-                    onPressed: () async {
-                      await _settingsSetAiSystemPromptTemplate(
-                        ctrl.text.trim(),
-                      );
-                      if (!ctx.mounted) return;
-                      Navigator.pop(ctx);
-                      _reloadFromPrefs();
-                    },
-                    child: Text(l.save),
-                  ),
-                ]),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '~ $tokenCount ${l.settingsAiPromptTokens}',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 12,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    _buildAiSheetActions([
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(l.cancel),
+                      ),
+                      FilledButton(
+                        onPressed: () async {
+                          final value = ctrl.text.trim();
+                          await SettingsStore.instance.writeRaw(
+                            'aiCustomInstructions',
+                            value,
+                          );
+                          aiCustomInstructions = value;
+                          if (!ctx.mounted) return;
+                          Navigator.pop(ctx);
+                          _reloadFromPrefs();
+                        },
+                        child: Text(l.save),
+                      ),
+                    ]),
+                  ],
+                ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showPromptDialog() {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final defaultTemplate = _buildDefaultAiPromptTemplate(l);
+    final ctrl = TextEditingController(
+      text: aiSystemPromptTemplate.isEmpty
+          ? defaultTemplate
+          : aiSystemPromptTemplate,
+    );
+
+    const variables = [
+      '[today]',
+      '[current_lesson]',
+      '[next_lesson]',
+      '[timetable]',
+      '[exams]',
+      '[homework]',
+      '[grades_summary]',
+      '[next_free_day]',
+      '[day_summary_today]',
+      '[day_summary_tomorrow]',
+    ];
+
+    _showUnifiedSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      child: DefaultTabController(
+        length: 2,
+        child: StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final cs = Theme.of(ctx).colorScheme;
+            final isCustomActive = aiSystemPromptTemplate.trim().isNotEmpty;
+            final estimatedTokens = estimateLocalTokens(ctrl.text);
+
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                10,
+                20,
+                MediaQuery.of(ctx).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          l.settingsAiPromptAdvanced,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isCustomActive
+                              ? cs.tertiaryContainer
+                              : cs.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          isCustomActive
+                              ? l.settingsAiPromptCustomActive
+                              : l.settingsAiPromptDefaultActive,
+                          style: GoogleFonts.outfit(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isCustomActive
+                                ? cs.onTertiaryContainer
+                                : cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TabBar(
+                    tabs: [
+                      Tab(text: l.settingsAiPromptTabEdit),
+                      Tab(text: l.settingsAiPromptTabPreview),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: (MediaQuery.of(ctx).size.height * 0.35).clamp(
+                      160.0,
+                      300.0,
+                    ),
+                    child: TabBarView(
+                      children: [
+                        // Tab 1: Edit
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (isCustomActive)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: cs.errorContainer.withValues(alpha: 0.4),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.warning_amber_rounded,
+                                      size: 16,
+                                      color: cs.error,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        l.settingsAiPromptOverrideWarning,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 11,
+                                          color: cs.onErrorContainer,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            Expanded(
+                              child: TextField(
+                                controller: ctrl,
+                                minLines: 8,
+                                maxLines: 20,
+                                onChanged: (_) => setDialogState(() {}),
+                                style: GoogleFonts.jetBrainsMono(fontSize: 12),
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: variables.map((v) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: ActionChip(
+                                      visualDensity: VisualDensity.compact,
+                                      label: Text(
+                                        v,
+                                        style: GoogleFonts.jetBrainsMono(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        final text = ctrl.text;
+                                        final sel = ctrl.selection;
+                                        final start = sel.start >= 0
+                                            ? sel.start
+                                            : text.length;
+                                        final end = sel.end >= 0
+                                            ? sel.end
+                                            : text.length;
+                                        ctrl.text = text.replaceRange(
+                                          start,
+                                          end,
+                                          v,
+                                        );
+                                        ctrl.selection =
+                                            TextSelection.collapsed(
+                                              offset: start + v.length,
+                                            );
+                                        setDialogState(() {});
+                                      },
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ],
+                        ),
+                        // Tab 2: Preview
+                        SingleChildScrollView(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: cs.surfaceContainerHighest.withValues(
+                                alpha: 0.5,
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  ctrl.text,
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 11.5,
+                                  ),
+                                ),
+                                const Divider(height: 24),
+                                Text(
+                                  l.settingsAiPromptAppAddsHeader,
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                    color: cs.primary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _chatPromptSuffix(l),
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 11,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.data_usage_rounded,
+                              size: 14,
+                              color: cs.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '~ $estimatedTokens Tokens',
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 11.5,
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            ctrl.text = defaultTemplate;
+                            setDialogState(() {});
+                          },
+                          icon: const Icon(Icons.restart_alt_rounded, size: 15),
+                          label: Text(
+                            l.settingsAiPromptReset,
+                            style: GoogleFonts.outfit(fontSize: 12),
+                          ),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildAiSheetActions([
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(l.cancel),
+                    ),
+                    FilledButton(
+                      onPressed: () async {
+                        final val = ctrl.text.trim();
+                        final toSave = val == defaultTemplate.trim()
+                            ? ''
+                            : val;
+                        await _settingsSetAiSystemPromptTemplate(toSave);
+                        if (!ctx.mounted) return;
+                        Navigator.pop(ctx);
+                        _reloadFromPrefs();
+                      },
+                      child: Text(l.save),
+                    ),
+                  ]),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -1061,17 +1437,6 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 32,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: cs.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
                 Text(
                   l.settingsAiPromptVariables,
                   style: GoogleFonts.outfit(
@@ -1245,49 +1610,21 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     aiTopP = value;
   }
 
-  Future<void> _settingsSetAiPersona(String value) async {
-    final prefs = SettingsStore.instance.preferences;
-    await prefs.setString('aiPersona', value);
-    aiPersona = value;
-  }
-
-  void _showAiPersonaDialog() {
-    final l = appL10nFor(appLocaleNotifier.value);
-    _showUnifiedOptionSheet<String>(
-      context: context,
-      title: l.settingsAiPersonaTitle,
-      options: [
-        _SheetOption(
-          value: 'helpful',
-          title: l.settingsAiPersonaHelpful,
-          icon: Icons.auto_awesome_rounded,
-          selected: aiPersona == 'helpful',
-        ),
-        _SheetOption(
-          value: 'strict',
-          title: l.settingsAiPersonaStrict,
-          icon: Icons.school_rounded,
-          selected: aiPersona == 'strict',
-        ),
-        _SheetOption(
-          value: 'buddy',
-          title: l.settingsAiPersonaBuddy,
-          icon: Icons.sentiment_satisfied_alt_rounded,
-          selected: aiPersona == 'buddy',
-        ),
-      ],
-    ).then((value) async {
-      if (value != null) {
-        await _settingsSetAiPersona(value);
-        await _reloadFromPrefs();
-      }
-    });
+  Future<void> _setAiShareGrades(bool value) async {
+    aiShareGrades = value;
+    await SettingsStore.instance.writeRaw('aiShareGrades', value);
+    if (mounted) setState(() {});
   }
 
   void _showAdvancedSettingsDialog() {
     final l = appL10nFor(appLocaleNotifier.value);
+    final isLocal = aiProvider == 'local';
+    final maxTokensLimit = isLocal ? 1024 : 8192;
+    final minTokens = isLocal ? 64 : 128;
     double temp = aiTemperature;
-    int tokens = aiMaxTokens;
+    int tokens = isLocal
+        ? effectiveLocalMaxTokens(aiMaxTokens, kLocalModelDefaultSlotContext)
+        : aiMaxTokens.clamp(minTokens, maxTokensLimit);
     double topP = aiTopP;
 
     _showUnifiedSheet<void>(
@@ -1307,17 +1644,6 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 32,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: cs.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
                 Text(
                   l.aiParametersTitle,
                   style: GoogleFonts.outfit(
@@ -1335,7 +1661,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 ),
                 const SizedBox(height: 32),
                 _buildSlider(
-                  label: l.settingsAiParametersTitle,
+                  label: l.aiParameterTemperature,
                   value: temp,
                   min: 0,
                   max: 2,
@@ -1347,19 +1673,21 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 ),
                 const SizedBox(height: 24),
                 _buildSlider(
-                  label: l.gradesWeightLabel,
+                  label: l.aiParameterMaxTokens,
                   value: tokens.toDouble(),
-                  min: 256,
-                  max: 8192,
-                  divisions: 31,
+                  min: minTokens.toDouble(),
+                  max: maxTokensLimit.toDouble(),
+                  divisions: isLocal ? 15 : 31,
                   suffix: tokens.toString(),
-                  desc: l.aiTokenDesc,
+                  desc: isLocal
+                      ? '${l.aiTokenDesc} (Empfohlen: 256–512 für schnelle lokale Antworten und mehr Platz für Stundenplandaten)'
+                      : l.aiTokenDesc,
                   onChanged: (v) => setStateDialog(() => tokens = v.round()),
                   cs: cs,
                 ),
                 const SizedBox(height: 24),
                 _buildSlider(
-                  label: l.gradesTypeLabel,
+                  label: l.aiParameterTopP,
                   value: topP,
                   min: 0,
                   max: 1,
@@ -1506,6 +1834,292 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     }
   }
 
+  (String, Color, Color, IconData) _resolveStatus(AppL10n l, ColorScheme cs) {
+    if (!aiEnabledNotifier.value) {
+      return (
+        l.settingsAiStatusDisabled,
+        cs.surfaceContainerHighest,
+        cs.onSurfaceVariant,
+        Icons.power_settings_new_rounded,
+      );
+    }
+    if (aiProvider == 'local') {
+      if (aiLocalModelPath.isNotEmpty) {
+        return (
+          l.settingsAiStatusReady,
+          Colors.green.withValues(alpha: 0.15),
+          Colors.green.shade700,
+          Icons.check_circle_rounded,
+        );
+      }
+      return (
+        l.settingsAiStatusNeedsModel,
+        Colors.orange.withValues(alpha: 0.15),
+        Colors.orange.shade800,
+        Icons.download_for_offline_rounded,
+      );
+    }
+    if (aiProvider == 'custom') {
+      if (aiCustomBaseUrl.trim().isEmpty) {
+        return (
+          l.settingsAiStatusNeedsUrl,
+          Colors.orange.withValues(alpha: 0.15),
+          Colors.orange.shade800,
+          Icons.link_off_rounded,
+        );
+      }
+      if (aiCustomModel.trim().isEmpty) {
+        return (
+          l.settingsAiStatusNeedsCustomModel,
+          Colors.orange.withValues(alpha: 0.15),
+          Colors.orange.shade800,
+          Icons.edit_note_rounded,
+        );
+      }
+      return (
+        l.settingsAiStatusReady,
+        Colors.green.withValues(alpha: 0.15),
+        Colors.green.shade700,
+        Icons.check_circle_rounded,
+      );
+    }
+    final key = _activeProviderApiKey();
+    if (key.trim().isEmpty) {
+      return (
+        l.settingsAiStatusNeedsKey,
+        Colors.orange.withValues(alpha: 0.15),
+        Colors.orange.shade800,
+        Icons.key_off_rounded,
+      );
+    }
+    return (
+      l.settingsAiStatusReady,
+      Colors.green.withValues(alpha: 0.15),
+      Colors.green.shade700,
+      Icons.check_circle_rounded,
+    );
+  }
+
+  Widget _buildAiHeroCard(BuildContext context, AppL10n l, ColorScheme cs) {
+    final enabled = aiEnabledNotifier.value;
+    final (statusLabel, statusBg, statusFg, statusIcon) = _resolveStatus(l, cs);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: enabled
+                    ? cs.primaryContainer
+                    : cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                color: enabled
+                    ? cs.onPrimaryContainer
+                    : cs.onSurfaceVariant,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l.settingsSectionAI,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 17,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ),
+            if (enabled) ...[
+              const SizedBox(width: 6),
+              Container(
+                constraints: const BoxConstraints(maxWidth: 110),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: statusBg,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(statusIcon, size: 12, color: statusFg),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        statusLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                          color: statusFg,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(width: 8),
+            Switch(
+              value: enabled,
+              onChanged: _setAiEnabled,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showProviderDialog() {
+    final l = appL10nFor(appLocaleNotifier.value);
+    _showUnifiedSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      child: Builder(
+        builder: (ctx) {
+          final cs = Theme.of(ctx).colorScheme;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              12,
+              20,
+              MediaQuery.of(ctx).padding.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.settingsAiProvider,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...kSupportedAiProviders.map((provider) {
+                  final isSelected = aiProvider == provider;
+                  final (icon, desc) = switch (provider) {
+                    'gemini' => (
+                      Icons.auto_awesome_rounded,
+                      l.settingsAiProviderGeminiDesc,
+                    ),
+                    'openai' => (
+                      Icons.chat_bubble_outline_rounded,
+                      l.settingsAiProviderOpenAiDesc,
+                    ),
+                    'mistral' => (
+                      Icons.cloud_rounded,
+                      l.settingsAiProviderMistralDesc,
+                    ),
+                    'custom' => (
+                      Icons.settings_ethernet_rounded,
+                      l.settingsAiProviderCustomDesc,
+                    ),
+                    'local' => (
+                      Icons.memory_rounded,
+                      l.settingsAiProviderLocalDesc,
+                    ),
+                    _ => (Icons.smart_toy_rounded, ''),
+                  };
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: Material(
+                      color: isSelected
+                          ? cs.primaryContainer.withValues(alpha: 0.35)
+                          : cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: isSelected
+                              ? cs.primary.withValues(alpha: 0.6)
+                              : cs.outlineVariant.withValues(alpha: 0.2),
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? cs.primaryContainer
+                                : cs.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            icon,
+                            size: 20,
+                            color: isSelected
+                                ? cs.primary
+                                : cs.onSurfaceVariant,
+                          ),
+                        ),
+                        title: Text(
+                          _localizedAiProviderLabel(l, provider),
+                          style: GoogleFonts.outfit(
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                        subtitle: Text(
+                          desc,
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? Icon(
+                                Icons.check_circle_rounded,
+                                color: cs.primary,
+                                size: 22,
+                              )
+                            : null,
+                        onTap: () async {
+                          Navigator.pop(ctx);
+                          if (aiProvider == provider) return;
+                          await _settingsSetAiProvider(provider);
+                          await _reloadFromPrefs();
+                          if (mounted) setState(() {});
+                        },
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
@@ -1517,39 +2131,26 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     return SettingsPageShell(
       title: l.settingsSectionAI,
       children: [
-        SettingsGroup(
-          title: l.settingsAiAvailability,
-          children: [
-            SettingsSwitchTile(
-              icon: Icons.auto_awesome_rounded,
-              title: l.settingsAiEnabled,
-              subtitle: l.settingsAiEnabledDesc,
-              showSubtitle: true,
-              value: aiEnabledNotifier.value,
-              onChanged: _setAiEnabled,
-            ),
-          ],
-        ),
+        _buildAiHeroCard(context, l, cs),
         if (aiEnabledNotifier.value) ...[
-          // ── GROUP 1: AI MODEL & PROVIDER ──
+          // ── CONNECTION ──
           SettingsGroup(
-            title: l.settingsSectionAI,
+            title: l.settingsAiSectionConnection,
             children: [
               SettingsTile(
-                icon: Icons.smart_toy_rounded,
+                icon: switch (aiProvider) {
+                  'gemini' => Icons.auto_awesome_rounded,
+                  'openai' => Icons.chat_bubble_outline_rounded,
+                  'mistral' => Icons.cloud_rounded,
+                  'custom' => Icons.settings_ethernet_rounded,
+                  'local' => Icons.memory_rounded,
+                  _ => Icons.hub_rounded,
+                },
                 iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
                 iconColor: cs.onPrimaryContainer,
                 title: l.settingsAiProvider,
                 subtitle: _localizedAiProviderLabel(l, aiProvider),
                 onTap: _showProviderDialog,
-              ),
-              SettingsTile(
-                icon: Icons.memory_rounded,
-                iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
-                iconColor: cs.onPrimaryContainer,
-                title: l.settingsAiModel,
-                subtitle: aiModel,
-                onTap: _showModelDialog,
               ),
               if (isCustom) ...[
                 SettingsTile(
@@ -1577,7 +2178,57 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                       : aiCustomBaseUrl,
                   onTap: _showBaseUrlDialog,
                 ),
+                SettingsTile(
+                  icon: Icons.smart_toy_outlined,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onSecondaryContainer,
+                  title: l.settingsAiCustomModel,
+                  subtitle: aiCustomModel.isEmpty
+                      ? l.settingsAiCustomModelEmpty
+                      : aiCustomModel,
+                  onTap: _showCustomModelDialog,
+                ),
               ],
+              if (isLocal) ...[
+                SettingsTile(
+                  icon: Icons.download_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onSecondaryContainer,
+                  title: l.settingsAiLocalModel,
+                  subtitle:
+                      kLocalModels
+                          .where((m) => m.id == aiModel)
+                          .firstOrNull
+                          ?.name ??
+                      aiModel,
+                  onTap: _showLocalModelDialog,
+                ),
+                SettingsTile(
+                  icon: Icons.data_usage_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onSecondaryContainer,
+                  title: '${l.settingsAiContextWindow} (4096 Tokens)',
+                  subtitle: l.settingsAiContextWindowDesc,
+                  showSubtitle: true,
+                ),
+              ],
+              if (!isLocal && !isCustom)
+                SettingsTile(
+                  icon: Icons.memory_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.settingsAiModel,
+                  subtitle: aiModel,
+                  onTap: _showModelDialog,
+                ),
               if (!isLocal)
                 SettingsTile(
                   icon: Icons.key_rounded,
@@ -1604,58 +2255,52 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
             ],
           ),
 
-          // ── GROUP 2: PERSÖNLICHKEIT ──
+          // ── BEHAVIOR & PROMPT ──
           SettingsGroup(
-            title: l.settingsAiAdjustmentTitle,
+            title: l.settingsAiSectionBehavior,
             children: [
               SettingsTile(
-                icon: Icons.face_rounded,
+                icon: Icons.chat_rounded,
                 iconBackgroundColor: cs.tertiaryContainer.withValues(
                   alpha: 0.7,
                 ),
                 iconColor: cs.onTertiaryContainer,
-                title: l.settingsAiPersonaTitle,
-                subtitle: aiPersona == 'helpful'
-                    ? l.settingsAiPersonaHelpful
-                    : aiPersona == 'strict'
-                    ? l.settingsAiPersonaStrict
-                    : l.settingsAiPersonaBuddy,
-                onTap: _showAiPersonaDialog,
+                title: l.settingsAiInstructions,
+                subtitle: aiCustomInstructions.isEmpty
+                    ? l.settingsAiInstructionsEmpty
+                    : aiCustomInstructions,
+                onTap: _showCustomInstructionsDialog,
               ),
-            ],
-          ),
-
-          // ── GROUP: LOCAL MODEL SETTINGS (only for local provider) ──
-          if (isLocal) ...[
-            SettingsGroup(
-              title: l.settingsAiLocalModel,
-              children: [
-                SettingsTile(
-                  icon: Icons.download_rounded,
-                  iconBackgroundColor: cs.tertiaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onTertiaryContainer,
-                  title: l.settingsAiLocalModel,
-                  subtitle: l.settingsAiLocalModelDesc,
-                  onTap: _showLocalModelDialog,
-                ),
-              ],
-            ),
-          ],
-
-          // ── GROUP 3: PROMPT CONFIGURATION ──
-          SettingsGroup(
-            title: l.settingsAiPrompt,
-            children: [
               SettingsTile(
                 icon: Icons.edit_note_rounded,
                 iconBackgroundColor: cs.tertiaryContainer.withValues(
                   alpha: 0.7,
                 ),
                 iconColor: cs.onTertiaryContainer,
-                title: l.settingsAiPrompt,
-                subtitle: l.settingsAiPromptDesc,
+                title: l.settingsAiPromptAdvanced,
+                subtitle: aiSystemPromptTemplate.isEmpty
+                    ? l.settingsAiPromptDefaultActive
+                    : l.settingsAiPromptCustomActive,
+                trailing: aiSystemPromptTemplate.isNotEmpty
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cs.tertiaryContainer,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'CUSTOM',
+                          style: GoogleFonts.outfit(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: cs.onTertiaryContainer,
+                          ),
+                        ),
+                      )
+                    : const Icon(Icons.chevron_right_rounded),
                 onTap: _showPromptDialog,
               ),
               SettingsTile(
@@ -1671,7 +2316,24 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
             ],
           ),
 
-          // ── GROUP 4: DATEN ──
+          // ── PRIVACY ──
+          SettingsGroup(
+            title: l.settingsAiPrivacy,
+            children: [
+              SettingsSwitchTile(
+                icon: Icons.shield_rounded,
+                iconBackgroundColor: cs.surfaceContainerHighest,
+                iconColor: cs.onSurfaceVariant,
+                title: l.settingsAiShareGrades,
+                subtitle: l.settingsAiShareGradesDesc,
+                showSubtitle: true,
+                value: aiShareGrades,
+                onChanged: _setAiShareGrades,
+              ),
+            ],
+          ),
+
+          // ── DATA ──
           SettingsGroup(
             title: l.settingsAiDataTitle,
             children: [
@@ -1679,6 +2341,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 icon: Icons.delete_sweep_rounded,
                 iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.7),
                 iconColor: cs.onErrorContainer,
+                destructive: true,
                 title: l.aiClearHistoryTileTitle,
                 subtitle: l.aiClearHistoryTileDesc,
                 onTap: _clearChatHistory,

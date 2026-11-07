@@ -28,10 +28,7 @@ class _AiSuggestionCardState extends State<_AiSuggestionCard> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final duration = _aiMotionDuration(
-      context,
-      normal: const Duration(milliseconds: 240),
-    );
+    final duration = _aiFastMotionDuration(context);
 
     if (widget.compact) {
       return Material(
@@ -44,34 +41,37 @@ class _AiSuggestionCardState extends State<_AiSuggestionCard> {
           onTapUp: (_) => _press(false),
           child: AnimatedScale(
             duration: duration,
-            scale: _pressed && !_aiReduceMotion(context) ? 0.975 : 1,
+            curve: Curves.easeOutCubic,
+            scale: _pressed && !_aiReduceMotion(context) ? 0.96 : 1,
             child: Container(
-              constraints: const BoxConstraints(minHeight: 44),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              constraints: const BoxConstraints(minHeight: 38),
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
               decoration: BoxDecoration(
                 color: (_pressed
                         ? cs.primaryContainer
                         : cs.surfaceContainerHigh)
-                    .withValues(alpha: 0.78),
+                    .withValues(alpha: 0.85),
                 borderRadius: BorderRadius.circular(_aiRadius(18)),
                 border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.22),
+                  color: (_pressed ? cs.primary : cs.outlineVariant)
+                      .withValues(alpha: _pressed ? 0.4 : 0.22),
+                  width: 1,
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(widget.icon, size: 17, color: cs.primary),
-                  const SizedBox(width: 8),
+                  Icon(widget.icon, size: 16, color: cs.primary),
+                  const SizedBox(width: 7),
                   Flexible(
                     child: Text(
                       widget.text,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: untisThemeTextStyle(
                         context,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                         color: cs.onSurface,
                       ),
                     ),

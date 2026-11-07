@@ -236,6 +236,25 @@ class LocalModelDownloadState {
 
   bool get isDownloading => phase == LocalModelDownloadPhase.downloading;
   bool get hasError => phase == LocalModelDownloadPhase.error;
+
+  Duration? get estimatedRemainingTime {
+    if (bytesPerSecond <= 0 || total <= 0 || received >= total) return null;
+    final remainingBytes = total - received;
+    final seconds = (remainingBytes / bytesPerSecond).round();
+    if (seconds <= 0) return null;
+    return Duration(seconds: seconds);
+  }
+}
+
+String formatModelRemainingTime(Duration? d, AppL10n l) {
+  if (d == null) return '';
+  final totalSeconds = d.inSeconds;
+  final timeStr = switch (totalSeconds) {
+    < 60 => '${totalSeconds}s',
+    < 3600 => '${d.inMinutes}m ${(totalSeconds % 60)}s',
+    _ => '${d.inHours}h ${(d.inMinutes % 60)}m',
+  };
+  return l.settingsAiDownloadRemaining(timeStr);
 }
 
 /// Owns local-model transfers independently from whichever settings or
@@ -251,6 +270,7 @@ class LocalModelDownloadCoordinator
   final Map<String, CancelToken> _tokens = {};
   final Map<String, DateTime> _lastProgressAt = {};
   final Map<String, int> _lastReceived = {};
+  final Map<String, DateTime> _lastNotificationAt = {};
 
   LocalModelDownloadState stateFor(String modelId) =>
       value[modelId] ?? const LocalModelDownloadState();
@@ -319,16 +339,35 @@ class LocalModelDownloadCoordinator
               : (received - previousReceived) * 1000 / elapsedMs;
           _lastProgressAt[model.id] = now;
           _lastReceived[model.id] = received;
-          _publish(
-            model.id,
-            LocalModelDownloadState(
-              phase: LocalModelDownloadPhase.downloading,
-              progress: total > 0 ? received / total : 0,
-              received: received,
-              total: total,
-              bytesPerSecond: speed,
-            ),
+          final state = LocalModelDownloadState(
+            phase: LocalModelDownloadPhase.downloading,
+            progress: total > 0 ? received / total : 0,
+            received: received,
+            total: total,
+            bytesPerSecond: speed,
           );
+          _publish(model.id, state);
+
+          final lastNotif = _lastNotificationAt[model.id];
+          if (lastNotif == null ||
+              now.difference(lastNotif).inMilliseconds >= 1000) {
+            _lastNotificationAt[model.id] = now;
+            final pct = total > 0 ? ((received / total) * 100).round() : 0;
+            final remainingTime = state.estimatedRemainingTime;
+            final l = appL10nFor(appLocaleNotifier.value);
+            final timePart = remainingTime != null
+                ? ' • ${formatModelRemainingTime(remainingTime, l)}'
+                : '';
+            final speedPart = _formatByteSize(speed.round());
+            NotificationService().showDownloadProgressNotification(
+              id: NotificationIds.modelDownload,
+              title: model.name,
+              body: '$pct% • $speedPart/s$timePart',
+              progress: pct,
+              maxProgress: 100,
+              locale: appLocaleNotifier.value,
+            );
+          }
         },
       );
 
@@ -348,8 +387,19 @@ class LocalModelDownloadCoordinator
         total: length,
       );
       _publish(model.id, completed);
+
+      _lastNotificationAt.remove(model.id);
+      final l = appL10nFor(appLocaleNotifier.value);
+      NotificationService().showDownloadCompleteNotification(
+        id: NotificationIds.modelDownload,
+        title: model.name,
+        body: l.settingsAiDownloadComplete,
+        locale: appLocaleNotifier.value,
+      );
       return completed;
     } on DioException catch (error) {
+      _lastNotificationAt.remove(model.id);
+      NotificationService().cancelNotification(NotificationIds.modelDownload);
       if (error.type == DioExceptionType.cancel) {
         const idle = LocalModelDownloadState();
         _publish(model.id, idle);
@@ -363,6 +413,8 @@ class LocalModelDownloadCoordinator
       _publish(model.id, failed);
       return failed;
     } catch (error) {
+      _lastNotificationAt.remove(model.id);
+      NotificationService().cancelNotification(NotificationIds.modelDownload);
       final failed = LocalModelDownloadState(
         phase: LocalModelDownloadPhase.error,
         progress: -1,
@@ -380,6 +432,8 @@ class LocalModelDownloadCoordinator
   Future<LocalModelDownloadState> retry(LocalModelInfo model) => start(model);
 
   void cancel(String modelId) {
+    _lastNotificationAt.remove(modelId);
+    NotificationService().cancelNotification(NotificationIds.modelDownload);
     final token = _tokens[modelId];
     if (token != null && !token.isCancelled) token.cancel('User cancelled');
     _publish(modelId, const LocalModelDownloadState());

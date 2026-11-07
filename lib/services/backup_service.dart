@@ -25,6 +25,7 @@ class BackupService {
     'dailyBriefingPush',
     'importantChangesPush',
     'demoMode',
+    'aiShareGrades',
   };
 
   static const Set<String> _intKeys = {
@@ -45,6 +46,8 @@ class BackupService {
     'aiCustomCompatibility',
     'aiCustomBaseUrl',
     'aiSystemPromptTemplate',
+    'aiCustomModel',
+    'aiCustomInstructions',
     'aiLocalModelPath',
     'subjectColors',
     'selectedCustomBackgroundId',

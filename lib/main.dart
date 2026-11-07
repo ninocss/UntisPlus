@@ -29,7 +29,11 @@ import 'package:path_provider/path_provider.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
 import 'widgets/progressive_edge_blur.dart';
+import 'widgets/expressive_lesson_card.dart';
+import 'widgets/expressive_now_wave_indicator.dart';
 import 'widgets/tablet_glass_sidebar.dart';
+export 'widgets/expressive_lesson_card.dart';
+export 'widgets/expressive_now_wave_indicator.dart';
 export 'widgets/tablet_glass_sidebar.dart';
 import 'core/settings_store.dart';
 import 'core/defensive_parsers.dart';
@@ -225,12 +229,27 @@ AiGenerationSettings _currentAiGenerationSettings() {
 
 LocalModelRuntime _currentLocalModelRuntime({AiGenerationSettings? settings}) {
   final l = appL10nFor(appLocaleNotifier.value);
+  final effectiveSettings = settings ??
+      AiGenerationSettings(
+        temperature: aiTemperature,
+        maxTokens: effectiveLocalMaxTokens(
+          aiMaxTokens,
+          kLocalModelDefaultSlotContext,
+        ),
+        topP: aiTopP,
+        formatAttachmentText: (attachment) =>
+            l.aiAttachmentText(attachment.name, attachment.textExcerpt),
+        formatUnsupportedAttachment: (attachment) =>
+            l.aiAttachmentUnsupported(attachment.name, attachment.mimeType),
+      );
   return LocalModelRuntime(
-    settings: settings ?? _currentAiGenerationSettings(),
+    settings: effectiveSettings,
     isValidModel: (path) =>
         _isValidLocalModelFile(path, model: _localModelForPath(path)),
     loadErrorMessage: l.aiLocalModelLoadError,
     noReplyMessage: l.aiNoReply,
+    contextExceededMessage: l.aiContextExceededError,
+    contextSize: kLocalModelDefaultSlotContext,
   );
 }
 
@@ -561,6 +580,8 @@ void main() async {
     4,
   );
   lessonCleanDesignNotifier.value = prefs.getBool('lessonCleanDesign') ?? false;
+  lessonExpressiveDesignNotifier.value =
+      prefs.getBool('lessonExpressiveDesign') ?? false;
   glowEffectsEnabledNotifier.value =
       prefs.getBool('glowEffectsEnabled') ?? false;
   lessonBlurEnabledNotifier.value = prefs.getBool('lessonBlurEnabled') ?? false;

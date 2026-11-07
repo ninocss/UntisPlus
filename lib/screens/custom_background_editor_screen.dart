@@ -763,6 +763,7 @@ class _CustomBackgroundEditorScreenState
         noReplyMessage: l.aiNoReply,
         missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
         customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+        customModelMissingMessage: l.settingsAiStatusNeedsCustomModel,
         localModelMissingMessage: l.aiLocalModelLoadError,
       ),
     );
