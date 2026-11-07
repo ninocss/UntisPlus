@@ -56,7 +56,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       _onboardingAiProvider,
       customCompatibility: _onboardingAiCustomCompatibility,
     );
-    if (!models.contains(_onboardingAiModel)) {
+    if (_onboardingAiProvider != 'custom' && !models.contains(_onboardingAiModel)) {
       _onboardingAiModel = _defaultModelForProvider(
         _onboardingAiProvider,
         customCompatibility: _onboardingAiCustomCompatibility,
@@ -329,6 +329,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final isTablet = UntisLayout.isTablet(context);
 
     return ValueListenableBuilder<String>(
       valueListenable: appLocaleNotifier,
@@ -372,152 +373,165 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ),
           ),
           SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 12),
-                // Progress header
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: M3ExpressiveProgressHeader(
-                    currentStep: _currentPage,
-                    totalSteps: _totalOnboardingSteps,
-                    onBack: _currentPage > 0 ||
-                            (widget.accountOnly &&
-                                Navigator.of(context).canPop())
-                        ? _previousPage
-                        : null,
-                  ),
-                ),
-                if (_inlineError != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                    child: Material(
-                      key: const ValueKey('onboarding-inline-error'),
-                      color: colors.errorContainer,
-                      borderRadius: BorderRadius.circular(16),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.error_outline_rounded,
-                              color: colors.onErrorContainer,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _inlineError!,
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                                style: untisThemeTextStyle(
-                                  context,
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.onErrorContainer,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () =>
-                                  setState(() => _inlineError = null),
-                              icon: Icon(
-                                Icons.close_rounded,
-                                color: colors.onErrorContainer,
-                              ),
-                            ),
-                          ],
-                        ),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    // Progress header
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isTablet ? 32 : 28,
+                      ),
+                      child: M3ExpressiveProgressHeader(
+                        currentStep: _currentPage,
+                        totalSteps: _totalOnboardingSteps,
+                        onBack: _currentPage > 0 ||
+                                (widget.accountOnly &&
+                                    Navigator.of(context).canPop())
+                            ? _previousPage
+                            : null,
                       ),
                     ),
-                  ),
-                const SizedBox(height: 8),
-                // Page content
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    physics: const NeverScrollableScrollPhysics(),
-                    onPageChanged: _onPageChanged,
-                    children: [
-                      if (widget.accountOnly)
-                        SchoolLoginStep(
-                          serverController: _serverController,
-                          schoolController: _schoolController,
-                          userController: _userController,
-                          passwordController: _passwordController,
-                          twoFactorController: _twoFactorController,
-                          isLoggingIn: _isLogginIn,
-                          requiresTwoFactor: _requiresTwoFactor,
-                          useLoginKey: _useLoginKey,
-                          onUseLoginKeyChanged: (val) {
-                            setState(() => _useLoginKey = val);
-                            SettingsStore.instance.preferences.setString(
-                              'loginCredentialMode',
-                              val
-                                  ? _credentialModeLoginKey
-                                  : _credentialModePassword,
-                            );
-                          },
-                          onLogin: _handleLogin,
-                          onDemoModeSelected: _activateDemoMode,
-                          accountOnly: true,
-                        )
-                      else ...[
-                        WelcomeHeroStep(
-                          onGetStarted: _nextPage,
+                    if (_inlineError != null)
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          isTablet ? 32 : 28,
+                          8,
+                          isTablet ? 32 : 28,
+                          0,
                         ),
-                        AppearanceStep(
-                          onNext: () {
-                            if (demoModeNotifier.value) {
-                              _pageController.animateToPage(
-                                3,
-                                duration: const Duration(milliseconds: 40),
-                                curve: _kSmoothBounce,
-                              );
-                            } else {
-                              _nextPage();
-                            }
-                          },
+                        child: Material(
+                          key: const ValueKey('onboarding-inline-error'),
+                          color: colors.errorContainer,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  color: colors.onErrorContainer,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _inlineError!,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: untisThemeTextStyle(
+                                      context,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.onErrorContainer,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () =>
+                                      setState(() => _inlineError = null),
+                                  icon: Icon(
+                                    Icons.close_rounded,
+                                    color: colors.onErrorContainer,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        SchoolLoginStep(
-                          serverController: _serverController,
-                          schoolController: _schoolController,
-                          userController: _userController,
-                          passwordController: _passwordController,
-                          twoFactorController: _twoFactorController,
-                          isLoggingIn: _isLogginIn,
-                          requiresTwoFactor: _requiresTwoFactor,
-                          useLoginKey: _useLoginKey,
-                          onUseLoginKeyChanged: (val) {
-                            setState(() => _useLoginKey = val);
-                            SettingsStore.instance.preferences.setString(
-                              'loginCredentialMode',
-                              val
-                                  ? _credentialModeLoginKey
-                                  : _credentialModePassword,
-                            );
-                          },
-                          onLogin: _handleLogin,
-                          onDemoModeSelected: _activateDemoMode,
-                          accountOnly: false,
-                        ),
-                        AiCopilotStep(
-                          initialProvider: _onboardingAiProvider,
-                          initialModel: _onboardingAiModel,
-                          initialCustomCompatibility:
-                              _onboardingAiCustomCompatibility,
-                          initialApiKeys: _onboardingProviderApiKeys,
-                          initialCustomBaseUrl: _aiCustomBaseUrlController.text,
-                          onSave: (map) => _applyAiSettings(map),
-                          onNext: _nextPage,
-                          onSkip: _nextPage,
-                        ),
-                        FeaturesReadyStep(
-                          onComplete: _completeOnboarding,
-                        ),
-                      ],
-                    ],
-                  ),
+                      ),
+                    const SizedBox(height: 8),
+                    // Page content
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        physics: const NeverScrollableScrollPhysics(),
+                        onPageChanged: _onPageChanged,
+                        children: [
+                          if (widget.accountOnly)
+                            SchoolLoginStep(
+                              serverController: _serverController,
+                              schoolController: _schoolController,
+                              userController: _userController,
+                              passwordController: _passwordController,
+                              twoFactorController: _twoFactorController,
+                              isLoggingIn: _isLogginIn,
+                              requiresTwoFactor: _requiresTwoFactor,
+                              useLoginKey: _useLoginKey,
+                              onUseLoginKeyChanged: (val) {
+                                setState(() => _useLoginKey = val);
+                                SettingsStore.instance.preferences.setString(
+                                  'loginCredentialMode',
+                                  val
+                                      ? _credentialModeLoginKey
+                                      : _credentialModePassword,
+                                );
+                              },
+                              onLogin: _handleLogin,
+                              onDemoModeSelected: _activateDemoMode,
+                              accountOnly: true,
+                            )
+                          else ...[
+                            WelcomeHeroStep(
+                              onGetStarted: _nextPage,
+                            ),
+                            AppearanceStep(
+                              onNext: () {
+                                if (demoModeNotifier.value) {
+                                  _pageController.animateToPage(
+                                    3,
+                                    duration: const Duration(milliseconds: 40),
+                                    curve: _kSmoothBounce,
+                                  );
+                                } else {
+                                  _nextPage();
+                                }
+                              },
+                            ),
+                            SchoolLoginStep(
+                              serverController: _serverController,
+                              schoolController: _schoolController,
+                              userController: _userController,
+                              passwordController: _passwordController,
+                              twoFactorController: _twoFactorController,
+                              isLoggingIn: _isLogginIn,
+                              requiresTwoFactor: _requiresTwoFactor,
+                              useLoginKey: _useLoginKey,
+                              onUseLoginKeyChanged: (val) {
+                                setState(() => _useLoginKey = val);
+                                SettingsStore.instance.preferences.setString(
+                                  'loginCredentialMode',
+                                  val
+                                      ? _credentialModeLoginKey
+                                      : _credentialModePassword,
+                                );
+                              },
+                              onLogin: _handleLogin,
+                              onDemoModeSelected: _activateDemoMode,
+                              accountOnly: false,
+                            ),
+                            AiCopilotStep(
+                              initialProvider: _onboardingAiProvider,
+                              initialModel: _onboardingAiModel,
+                              initialCustomCompatibility:
+                                  _onboardingAiCustomCompatibility,
+                              initialApiKeys: _onboardingProviderApiKeys,
+                              initialCustomBaseUrl: _aiCustomBaseUrlController.text,
+                              onSave: (map) => _applyAiSettings(map),
+                              onNext: _nextPage,
+                              onSkip: _nextPage,
+                            ),
+                            FeaturesReadyStep(
+                              onComplete: _completeOnboarding,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],

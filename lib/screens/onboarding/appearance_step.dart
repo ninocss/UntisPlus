@@ -343,20 +343,25 @@ class AppearanceStep extends StatelessWidget {
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
                                     m.$3,
-                                    size: 17,
+                                    size: 16,
                                     color: isSel ? colors.primary : colors.onSurfaceVariant,
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    m.$2,
-                                    style: untisThemeTextStyle(
-                                      context,
-                                      fontSize: 13,
-                                      fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
-                                      color: isSel ? colors.primary : colors.onSurfaceVariant,
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      m.$2,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: untisThemeTextStyle(
+                                        context,
+                                        fontSize: 12.5,
+                                        fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                                        color: isSel ? colors.primary : colors.onSurfaceVariant,
+                                      ),
                                     ),
                                   ),
                                 ],
