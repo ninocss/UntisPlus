@@ -8,7 +8,7 @@ import 'package:untisplus/widgets/untis_account_switcher_sheet.dart';
 /// Replaces the default [NavigationRail] on tablets with a floating glass panel
 /// featuring an app header, animated squircle destinations with badges, and an
 /// account switcher footer avatar.
-class TabletGlassSidebar extends StatelessWidget {
+class TabletGlassSidebar extends StatefulWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
   final bool showAi;
@@ -25,6 +25,13 @@ class TabletGlassSidebar extends StatelessWidget {
     this.tutorialLabelKeys,
     this.onAccountTap,
   });
+
+  @override
+  State<TabletGlassSidebar> createState() => _TabletGlassSidebarState();
+}
+
+class _TabletGlassSidebarState extends State<TabletGlassSidebar> {
+  final GlobalKey _avatarAnchorKey = GlobalKey();
 
   String _resolveInitials(UntisAccount? account) {
     if (account == null) return '';
@@ -72,20 +79,26 @@ class TabletGlassSidebar extends StatelessWidget {
     bool showBadgeDot = false,
     int badgeCount = 0,
   }) {
-    final isSelected = selectedIndex == index;
+    final isSelected = widget.selectedIndex == index;
     final iconData = isSelected ? selectedIcon : unselectedIcon;
     final iconColor = isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant;
     final bgColor = isSelected ? cs.primaryContainer : Colors.transparent;
 
-    Widget iconWidget = Icon(
-      iconData,
-      color: iconColor,
-      size: 24,
+    Widget iconWidget = AnimatedScale(
+      scale: isSelected ? 1.08 : 1.0,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      child: Icon(
+        iconData,
+        color: iconColor,
+        size: 24,
+      ),
     );
 
-    if (tutorialLabelKeys != null && tutorialLabelKeys![index] != null) {
+    if (widget.tutorialLabelKeys != null &&
+        widget.tutorialLabelKeys![index] != null) {
       iconWidget = KeyedSubtree(
-        key: tutorialLabelKeys![index],
+        key: widget.tutorialLabelKeys![index],
         child: iconWidget,
       );
     }
@@ -97,7 +110,7 @@ class TabletGlassSidebar extends StatelessWidget {
         type: MaterialType.transparency,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => onDestinationSelected(index),
+          onTap: () => widget.onDestinationSelected(index),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOutCubic,
@@ -170,9 +183,9 @@ class TabletGlassSidebar extends StatelessWidget {
       ),
     );
 
-    if (tutorialKeys != null && tutorialKeys![index] != null) {
+    if (widget.tutorialKeys != null && widget.tutorialKeys![index] != null) {
       itemWidget = KeyedSubtree(
-        key: tutorialKeys![index],
+        key: widget.tutorialKeys![index],
         child: itemWidget,
       );
     }
@@ -231,7 +244,7 @@ class TabletGlassSidebar extends StatelessWidget {
             selectedIcon: Icons.settings_rounded,
             cs: cs,
           ),
-          if (showAi)
+          if (widget.showAi)
             _buildDestinationItem(
               context: context,
               index: 4,
@@ -264,22 +277,6 @@ class TabletGlassSidebar extends StatelessWidget {
                           !constraints.hasBoundedHeight ||
                           constraints.maxHeight < 460;
 
-                      final headerWidget = Container(
-                        key: const ValueKey('tablet-sidebar-header'),
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: cs.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        alignment: Alignment.center,
-                        child: Icon(
-                          Icons.school_rounded,
-                          size: 24,
-                          color: cs.primary,
-                        ),
-                      );
-
                       final destinationItems = <Widget>[
                         for (int i = 0; i < destinations.length; i++) ...[
                           destinations[i],
@@ -299,42 +296,48 @@ class TabletGlassSidebar extends StatelessWidget {
                             ),
                             customBorder: const CircleBorder(),
                             onTap: () {
-                              if (onAccountTap != null) {
-                                onAccountTap!();
+                              if (widget.onAccountTap != null) {
+                                widget.onAccountTap!();
                               } else {
-                                UntisAccountSwitcherSheet.show(context);
+                                UntisAccountSwitcherSheet.showPopover(
+                                  context,
+                                  anchorKey: _avatarAnchorKey,
+                                );
                               }
                             },
                             child: Padding(
                               padding: const EdgeInsets.all(4),
-                              child: Container(
-                                width: 42,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: cs.primaryContainer,
-                                  border: Border.all(
-                                    color: cs.outlineVariant.withValues(
-                                      alpha: 0.3,
+                              child: KeyedSubtree(
+                                key: _avatarAnchorKey,
+                                child: Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: cs.primaryContainer,
+                                    border: Border.all(
+                                      color: cs.outlineVariant.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      width: 1,
                                     ),
-                                    width: 1,
                                   ),
-                                ),
-                                alignment: Alignment.center,
-                                child: initials.isNotEmpty
-                                    ? Text(
-                                        initials,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 13,
+                                  alignment: Alignment.center,
+                                  child: initials.isNotEmpty
+                                      ? Text(
+                                          initials,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 13,
+                                            color: cs.onPrimaryContainer,
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.person_rounded,
+                                          size: 20,
                                           color: cs.onPrimaryContainer,
                                         ),
-                                      )
-                                    : Icon(
-                                        Icons.person_rounded,
-                                        size: 20,
-                                        color: cs.onPrimaryContainer,
-                                      ),
+                                ),
                               ),
                             ),
                           ),
@@ -347,8 +350,6 @@ class TabletGlassSidebar extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              headerWidget,
-                              const SizedBox(height: 12),
                               ...destinationItems,
                               const SizedBox(height: 12),
                               footerAvatar,
@@ -360,8 +361,6 @@ class TabletGlassSidebar extends StatelessWidget {
                       return Column(
                         mainAxisSize: MainAxisSize.max,
                         children: [
-                          headerWidget,
-                          const SizedBox(height: 18),
                           ...destinationItems,
                           const Spacer(),
                           footerAvatar,

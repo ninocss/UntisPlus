@@ -135,6 +135,39 @@ void main() {
   );
 
   testWidgets(
+    'Switching tabs on tablet animates tab transitions smoothly',
+    (tester) async {
+      tester.view.physicalSize = const Size(1024, 768);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: MainNavigationScreen(),
+        ),
+      );
+      await tester.pump();
+
+      // Tap Exams icon in sidebar
+      await tester.tap(
+        find.descendant(
+          of: find.byType(TabletGlassSidebar),
+          matching: find.byIcon(Icons.assignment_outlined),
+        ),
+      );
+      // Advance by half duration (160ms) to verify animation is running
+      await tester.pump(const Duration(milliseconds: 160));
+      expect(tester.hasRunningAnimations, isTrue);
+
+      // Settle animations
+      await tester.pumpAndSettle();
+      expect(tester.hasRunningAnimations, isFalse);
+      expect(find.byType(ExamsPage), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'MainNavigationScreen hides TabletGlassSidebar and shows floating nav bar on phone widths',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);

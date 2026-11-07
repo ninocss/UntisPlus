@@ -75,7 +75,7 @@ void main() {
   }
 
   group('TabletGlassSidebar', () {
-    testWidgets('renders header, all 5 destinations, and footer avatar', (
+    testWidgets('renders all 5 destinations directly (without confusing header icon) and footer avatar', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(1200, 800);
@@ -89,9 +89,9 @@ void main() {
         buildSidebarHarness(selectedIndex: 0, showAi: true),
       );
 
-      // Header logo
-      expect(find.byKey(const ValueKey('tablet-sidebar-header')), findsOneWidget);
-      expect(find.byIcon(Icons.school_rounded), findsOneWidget);
+      // Header logo is removed (confusing student hat icon removed)
+      expect(find.byKey(const ValueKey('tablet-sidebar-header')), findsNothing);
+      expect(find.byIcon(Icons.school_rounded), findsNothing);
 
       // Selected timetable icon (active)
       expect(find.byIcon(Icons.watch_later_rounded), findsOneWidget);
@@ -271,7 +271,7 @@ void main() {
       },
     );
 
-    testWidgets('tapping footer avatar triggers UntisAccountSwitcherSheet.show', (
+    testWidgets('tapping footer avatar triggers UntisAccountSwitcherSheet popover', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(1200, 800);
@@ -289,7 +289,10 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tablet-sidebar-account-avatar')));
       await tester.pumpAndSettle();
 
-      expect(find.byType(UntisAccountSwitcherSheet), findsOneWidget);
+      final sheetFinder = find.byType(UntisAccountSwitcherSheet);
+      expect(sheetFinder, findsOneWidget);
+      final sheet = tester.widget<UntisAccountSwitcherSheet>(sheetFinder);
+      expect(sheet.isPopover, isTrue);
       expect(find.text('Gymnasium Alpha'), findsOneWidget);
       expect(find.text('Realschule Beta'), findsOneWidget);
     });
@@ -348,7 +351,7 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(
           find.byKey(const ValueKey('tablet-sidebar-header')),
-          findsOneWidget,
+          findsNothing,
         );
         expect(
           find.byKey(const ValueKey('tablet-sidebar-account-avatar')),

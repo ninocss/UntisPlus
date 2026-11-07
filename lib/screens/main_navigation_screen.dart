@@ -24,11 +24,9 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   final FocusNode _promptFocusNode = FocusNode();
-  late TabController _tabController;
   Timer? _streamRenderTimer;
   final StringBuffer _pendingStreamText = StringBuffer();
   DateTime? _lastStreamingHapticAt;
-  int _searchGeneration = 0;
   String _latestQuery = '';
   AiSearchResult? _latestResult;
   List<Map<String, dynamic>> _exams = [];
@@ -42,7 +40,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   DateTime _currentMonday = DateTime.now();
   bool _loading = true;
   bool _thinking = false;
-  bool _chatMode = false;
+  bool _cancelled = false;
+  final bool _chatMode = true;
   final List<Map<String, String>> _chatMessages = [];
   final List<AiChatAttachment> _attachments = [];
   final List<AiChatSession> _chatHistory = [];
@@ -52,22 +51,6 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      length: 2,
-      vsync: this,
-      animationDuration: Duration.zero,
-    );
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        final chatMode = _tabController.index == 1;
-        if (_chatMode != chatMode && mounted) {
-          setState(() => _chatMode = chatMode);
-        }
-        if (_chatMode) {
-          _scrollToBottom();
-        }
-      }
-    });
     _loadContext();
     _loadChatHistory();
     pendingAssistantPromptNotifier.addListener(_consumeNativeAssistantPrompt);
@@ -146,13 +129,11 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _chatMessages.clear();
       _latestResult = null;
       _latestQuery = '';
-      _chatMode = true;
       final nextGreeting = math.Random().nextInt(5);
       _aiGreetingIndex = nextGreeting == _aiGreetingIndex
           ? (nextGreeting + 1) % 5
           : nextGreeting;
     });
-    _selectAiTab(1, haptic: false);
     _hapticAction();
     // Check if we are inside a drawer (Navigator.canPop is true in drawers)
     if (Navigator.canPop(context)) {
@@ -165,14 +146,13 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _currentChatId = session.id;
       _chatMessages.clear();
       _chatMessages.addAll(session.messages);
-      _chatMode = true;
       _latestResult = null;
     });
-    _selectAiTab(1, haptic: false);
     _hapticSelection();
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
+    _scrollToBottom();
   }
 
   @override
@@ -181,7 +161,6 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _consumeNativeAssistantPrompt,
     );
     hiddenSubjectsNotifier.removeListener(_reloadContextForHiddenSubjects);
-    _tabController.dispose();
     _promptFocusNode.dispose();
     _streamRenderTimer?.cancel();
     _inputController.dispose();
@@ -203,17 +182,51 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     unawaited(AppHaptics.confirmation());
   }
 
-  void _selectAiTab(int index, {bool haptic = true}) {
-    final chatMode = index == 1;
-    final changed = _chatMode != chatMode;
-    if (changed && mounted) {
-      setState(() => _chatMode = chatMode);
-      if (haptic) _hapticSelection();
+  void _stopGeneration() {
+    if (!_thinking) return;
+    _cancelled = true;
+    _streamRenderTimer?.cancel();
+    _streamRenderTimer = null;
+    _flushStreamingText();
+    setState(() {
+      _thinking = false;
+      _attachments.clear();
+    });
+    _hapticAction();
+    _saveChatHistory();
+  }
+
+  void _regenerateLastResponse() {
+    if (_thinking || _chatMessages.isEmpty) return;
+    String? lastUserQuery;
+    for (int i = _chatMessages.length - 1; i >= 0; i--) {
+      if (_chatMessages[i]['role'] == 'user') {
+        lastUserQuery = _chatMessages[i]['content'];
+        break;
+      }
     }
-    if (_tabController.index != index) {
-      _tabController.animateTo(index, duration: Duration.zero);
+    if (lastUserQuery == null || lastUserQuery.isEmpty) return;
+    if (_chatMessages.last['role'] == 'assistant') {
+      _chatMessages.removeLast();
     }
-    if (chatMode) _scrollToBottom();
+    if (_chatMessages.isNotEmpty && _chatMessages.last['role'] == 'user') {
+      _chatMessages.removeLast();
+    }
+    _hapticAction();
+    unawaited(_sendChat(lastUserQuery));
+  }
+
+  List<AiLessonCardData> _extractLessonsForMessage(String content) {
+    if (content.isEmpty) return const [];
+    try {
+      final res = _parseSearchResult(
+        query: '',
+        reply: content,
+      );
+      return res.lessons;
+    } catch (_) {
+      return const [];
+    }
   }
 
   AiSearchResult _parseSearchResult({
@@ -460,7 +473,28 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     });
   }
 
+  String _nextFreeDaySummary() {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    for (int i = 0; i < 5; i++) {
+      final date = _currentMonday.add(Duration(days: i));
+      if (date.isBefore(todayStart)) continue;
+      final lessons = (_weekData[i] ?? const []).whereType<Map>().where(
+        (lesson) => lesson['code']?.toString().toLowerCase() != 'cancelled',
+      );
+      if (lessons.isEmpty) {
+        return DateFormat(
+          'EEEE, dd.MM.',
+          _icuLocale(appLocaleNotifier.value),
+        ).format(date);
+      }
+    }
+    return l.aiPromptNone;
+  }
+
   String _replaceAiPromptVariables(String template) {
+    final l = appL10nFor(appLocaleNotifier.value);
     final friday = _currentMonday.add(const Duration(days: 4));
     final vars = <String, String>{
       '[today]': DateFormat(
@@ -486,6 +520,9 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       '[exams_json]': jsonEncode(_jsonSafeValue(_exams)),
       '[current_lesson]': _currentLessonSummary(),
       '[next_lesson]': _nextLessonSummary(),
+      '[homework]': _formatHomeworkForAi(l),
+      '[grades_summary]': _formatGradesForAi(l),
+      '[next_free_day]': _nextFreeDaySummary(),
     };
 
     var resolved = template;
@@ -497,66 +534,17 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     return resolved;
   }
 
-  String _resolvedSystemPrompt() {
-    final l = appL10nFor(appLocaleNotifier.value);
-    final template = aiSystemPromptTemplate.trim().isNotEmpty
-        ? aiSystemPromptTemplate
-        : _buildDefaultAiPromptTemplate(l);
-    final resolved = _replaceAiPromptVariables(template);
-    return '''$resolved
-
-${l.aiResponseFormat}''';
-  }
-
   String _resolvedChatSystemPrompt() {
     final l = appL10nFor(appLocaleNotifier.value);
+    final isLocal = _normalizeAiProvider(aiProvider) == 'local';
     final template = aiSystemPromptTemplate.trim().isNotEmpty
         ? aiSystemPromptTemplate
-        : _buildDefaultAiPromptTemplate(l);
+        : _buildDefaultAiPromptTemplate(l, compact: isLocal);
     final resolved = _replaceAiPromptVariables(template);
-
-    String personaInstruction = '';
-    switch (aiPersona) {
-      case 'strict':
-        personaInstruction = l.aiPersonaStrict;
-        break;
-      case 'buddy':
-        personaInstruction = l.aiPersonaBuddy;
-        break;
-      case 'helpful':
-      default:
-        personaInstruction = l.aiPersonaHelpful;
-        break;
-    }
 
     return '''$resolved
 
-${l.aiAssistantIntro}
-$personaInstruction
-${l.aiAssistantRules}''';
-  }
-
-  Future<String> _requestProviderResponse(
-    String systemPrompt, {
-    required String userQuery,
-  }) {
-    final l = appL10nFor(appLocaleNotifier.value);
-    final runtime = _currentAiRuntimeConfiguration();
-    final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
-    return _aiRequestCoordinator.generate(
-      runtime: runtime,
-      spec: AiRequestSpec(
-        systemPrompt: systemPrompt,
-        userPrompt: userQuery,
-        temperature: 0.2,
-        maxTokens: 2600,
-        topP: aiTopP,
-        noReplyMessage: l.aiNoReply,
-        missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
-        customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
-        localModelMissingMessage: l.aiLocalModelLoadError,
-      ),
-    );
+${_chatPromptSuffix(l)}''';
   }
 
   String _daySummaryForPrompt(DateTime date) {
@@ -1039,6 +1027,7 @@ ${l.aiAssistantRules}''';
       attachments: attachments,
       missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
       customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+      customModelMissingMessage: l.settingsAiStatusNeedsCustomModel,
       localModelMissingMessage: l.aiLocalModelLoadError,
       unsupportedAttachmentMessage: (_) =>
           'Dieses lokale Modell kann nur Textdateien lesen. Nutze für Bilder oder PDFs einen passenden Remote-Anbieter.',
@@ -1072,6 +1061,7 @@ ${l.aiAssistantRules}''';
             : '$text\n\n📎 ${attachments.map((attachment) => attachment.name).join(', ')}',
       });
       _thinking = true;
+      _cancelled = false;
     });
     _hapticAction();
 
@@ -1116,7 +1106,7 @@ ${l.aiAssistantRules}''';
       );
 
       await for (final chunk in stream) {
-        if (!mounted) break;
+        if (!mounted || _cancelled) break;
         _queueStreamingText(chunk);
       }
       _flushStreamingText();
@@ -1204,39 +1194,7 @@ ${l.aiAssistantRules}''';
   Future<void> _send() async {
     final text = _inputController.text.trim();
     if (text.isEmpty || _thinking) return;
-
-    if (_chatMode) {
-      await _sendChat(text);
-      return;
-    }
-
-    final generation = ++_searchGeneration;
-    _inputController.clear();
-    setState(() {
-      _latestQuery = text;
-      _latestResult = null;
-      _thinking = true;
-    });
-
-    try {
-      final reply = await _requestProviderResponse(
-        _resolvedSystemPrompt(),
-        userQuery: text,
-      );
-      if (!mounted || generation != _searchGeneration) return;
-      setState(() {
-        _latestResult = _parseSearchResult(query: text, reply: reply);
-      });
-    } catch (e) {
-      if (!mounted || generation != _searchGeneration) return;
-      final l = appL10nFor(appLocaleNotifier.value);
-      setState(() {
-        final reply = _formatAiErrorDetail(e, l);
-        _latestResult = _parseSearchResult(query: text, reply: reply);
-      });
-    } finally {
-      if (mounted) setState(() => _thinking = false);
-    }
+    await _sendChat(text);
   }
 
   Future<void> _sendQuickPrompt(String prompt) async {
@@ -1280,56 +1238,16 @@ ${l.aiAssistantRules}''';
     }
   }
 
-  IconData _metricIcon(String label) {
-    final lower = label.toLowerCase();
-    if (lower.contains('stunde') ||
-        lower.contains('lesson') ||
-        lower.contains('kurs')) {
-      return Icons.school_rounded;
-    }
-    if (lower.contains('prüf') ||
-        lower.contains('exam') ||
-        lower.contains('test') ||
-        lower.contains('klausur')) {
-      return Icons.assignment_rounded;
-    }
-    if (lower.contains('raum') || lower.contains('room')) {
-      return Icons.meeting_room_rounded;
-    }
-    if (lower.contains('lehrer') || lower.contains('teacher')) {
-      return Icons.person_rounded;
-    }
-    if (lower.contains('frei') ||
-        lower.contains('free') ||
-        lower.contains('pause') ||
-        lower.contains('break')) {
-      return Icons.free_breakfast_rounded;
-    }
-    if (lower.contains('tag') ||
-        lower.contains('day') ||
-        lower.contains('heute')) {
-      return Icons.today_rounded;
-    }
-    if (lower.contains('zeit') || lower.contains('time')) {
-      return Icons.schedule_rounded;
-    }
-    return Icons.auto_awesome_rounded;
-  }
-
-  Widget _buildSearchLoadingState() {
-    return _AiAnalysisLoadingState(query: _latestQuery);
-  }
-
   Widget _buildSearchBar() {
     final l = appL10nFor(appLocaleNotifier.value);
     return _AiComposer(
       controller: _inputController,
       focusNode: _promptFocusNode,
-      mode: _chatMode ? _AiMode.chat : _AiMode.analysis,
+      mode: _AiMode.chat,
       thinking: _thinking,
       attachments: _attachments,
-      hintText: _chatMode ? l.aiInputHint : l.aiSearchHintPlaceholder,
-      onAttach: _chatMode && !_thinking
+      hintText: l.aiInputHint,
+      onAttach: !_thinking
           ? () => unawaited(_pickAssistantAttachment())
           : null,
       onRemoveAttachment: (index) {
@@ -1337,34 +1255,49 @@ ${l.aiAssistantRules}''';
         setState(() => _attachments.removeAt(index));
       },
       onSend: () => unawaited(_send()),
+      onStop: _stopGeneration,
       onClear: () => setState(_inputController.clear),
     );
   }
 
-  Widget _buildResultHeader(BuildContext context, ColorScheme cs) {
-    final result = _latestResult;
-    if (result == null) {
-      if (_thinking) return _buildSearchLoadingState();
-      return _buildEmptyState(context, cs);
-    }
+  Widget _buildContextualSuggestionsBar(BuildContext context, ColorScheme cs) {
+    final chips = _buildContextualChips();
+    if (chips.isEmpty) return const SizedBox.shrink();
 
-    return _AiAnalysisResult(
-      result: result,
-      thinking: _thinking,
-      metricIcon: _metricIcon,
-      onSearchAgain: () {
-        final query = _latestQuery.trim();
-        if (query.isNotEmpty) unawaited(_sendQuickPrompt(query));
-      },
-      onClear: () => unawaited(_clearCurrentResult()),
+    const suggestionIcons = <IconData>[
+      Icons.trending_up_rounded,
+      Icons.lightbulb_outline_rounded,
+      Icons.edit_note_rounded,
+      Icons.schedule_rounded,
+      Icons.event_note_rounded,
+    ];
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            for (final item in chips.indexed) ...[
+              if (item.$1 > 0) const SizedBox(width: 8),
+              _AiSuggestionCard(
+                compact: true,
+                text: item.$2,
+                icon: suggestionIcons[item.$1 % suggestionIcons.length],
+                onTap: () {
+                  _hapticAction();
+                  unawaited(_sendQuickPrompt(item.$2));
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildChatView(BuildContext context, ColorScheme cs) {
-    if (_chatMessages.isEmpty && !_thinking) {
-      return _buildEmptyState(context, cs);
-    }
-
     String? activeTitle;
     if (_currentChatId != null) {
       for (final session in _chatHistory) {
@@ -1385,7 +1318,7 @@ ${l.aiAssistantRules}''';
       controller: _scrollController,
       padding: EdgeInsets.fromLTRB(
         16,
-        MediaQuery.paddingOf(context).top + 8,
+        MediaQuery.paddingOf(context).top + 16,
         16,
         12,
       ),
@@ -1408,61 +1341,48 @@ ${l.aiAssistantRules}''';
         ],
         for (final entry in _chatMessages.indexed)
           _AiChatMessage(
+            key: ValueKey('msg_${entry.$1}_${entry.$2['role']}'),
             content: entry.$2['content'] ?? '',
             isUser: entry.$2['role'] == 'user',
             streaming:
                 _thinking &&
                 entry.$2['role'] == 'assistant' &&
                 entry.$1 == _chatMessages.length - 1,
+            lessons: entry.$2['role'] == 'assistant'
+                ? _extractLessonsForMessage(entry.$2['content'] ?? '')
+                : null,
+            onBackToTimetable: widget.onBackToTimetable,
+            onRegenerate:
+                entry.$2['role'] == 'assistant' &&
+                        entry.$1 == _chatMessages.length - 1 &&
+                        !_thinking
+                    ? _regenerateLastResponse
+                    : null,
           ),
         if (showExtraTyping)
-          const _AiChatMessage(content: '', isUser: false, streaming: true),
+          _AiChatMessage(
+            content: '',
+            isUser: false,
+            streaming: true,
+            onBackToTimetable: widget.onBackToTimetable,
+          ),
       ],
     );
   }
 
   Widget _buildBody(BuildContext context, ColorScheme cs) {
-    final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
-    final reduceMotion = _aiReduceMotion(context);
+    final showSuggestions =
+        !_promptFocusNode.hasFocus || _chatMessages.isEmpty;
 
     return Column(
       children: [
         Expanded(
-          child: AnimatedSwitcher(
-            duration: reduceMotion
-                ? _kAiReducedMotion
-                : const Duration(milliseconds: 280),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeOutCubic,
-            transitionBuilder: (child, animation) {
-              if (reduceMotion) {
-                return FadeTransition(opacity: animation, child: child);
-              }
-              return FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.985, end: 1).animate(
-                    CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
-                    ),
-                  ),
-                  child: child,
-                ),
-              );
-            },
-            child: KeyedSubtree(
-              key: ValueKey(
-                _chatMode
-                    ? '${mode.name}_${_chatMessages.isEmpty && !_thinking}'
-                    : mode.name,
-              ),
-              child: _chatMode
-                  ? _buildChatView(context, cs)
-                  : _buildResultHeader(context, cs),
-            ),
-          ),
+          child: _chatMessages.isEmpty && !_thinking
+              ? _buildEmptyState(context, cs)
+              : _buildChatView(context, cs),
         ),
+        if (showSuggestions)
+          _buildContextualSuggestionsBar(context, cs),
         _buildSearchBar(),
       ],
     );
@@ -1470,88 +1390,54 @@ ${l.aiAssistantRules}''';
 
   Widget _buildEmptyState(BuildContext context, ColorScheme cs) {
     final l = appL10nFor(appLocaleNotifier.value);
-    final analysisSuggestions = _buildContextualChips();
-    const suggestionIcons = <IconData>[
-      Icons.trending_up_rounded,
-      Icons.lightbulb_outline_rounded,
-      Icons.edit_note_rounded,
-    ];
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        MediaQuery.paddingOf(context).top + 16,
-        16,
-        20,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_chatMode) ...[
-            SizedBox(
-              width: double.infinity,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 54, 20, 20),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: cs.primaryContainer.withValues(alpha: 0.72),
-                      ),
-                      child: Icon(
-                        Icons.auto_awesome_rounded,
-                        color: cs.onPrimaryContainer,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      l.aiGreetings[_aiGreetingIndex % l.aiGreetings.length],
-                      textAlign: TextAlign.center,
-                      style: untisThemeTextStyle(
-                        context,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                  ],
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cs.primaryContainer.withValues(alpha: 0.72),
+                border: Border.all(
+                  color: cs.primary.withValues(alpha: 0.18),
+                  width: 1.5,
                 ),
               ),
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                color: cs.primary,
+                size: 28,
+              ),
             ),
-          ] else if (analysisSuggestions.isNotEmpty) ...[
+            const SizedBox(height: 18),
             Text(
-              l.aiTryIt,
+              l.aiGreetings[_aiGreetingIndex % l.aiGreetings.length],
+              textAlign: TextAlign.center,
               style: untisThemeTextStyle(
                 context,
-                fontSize: 13,
+                fontSize: 22,
                 fontWeight: FontWeight.w800,
+                color: cs.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l.aiAskAnything,
+              textAlign: TextAlign.center,
+              style: untisThemeTextStyle(
+                context,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w400,
                 color: cs.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final suggestion in analysisSuggestions.indexed)
-                  _AiSuggestionCard(
-                    compact: true,
-                    text: suggestion.$2,
-                    icon:
-                        suggestionIcons[suggestion.$1 % suggestionIcons.length],
-                    onTap: () {
-                      _hapticSelection();
-                      unawaited(_sendQuickPrompt(suggestion.$2));
-                    },
-                  ),
-              ],
-            ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -1560,7 +1446,6 @@ ${l.aiAssistantRules}''';
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = appL10nFor(appLocaleNotifier.value);
-    final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
 
     if (_loading) {
       return Scaffold(
@@ -1568,15 +1453,6 @@ ${l.aiAssistantRules}''';
         appBar: _mainTabHeaderAppBar(
           context,
           l.aiTitle,
-          bottom: _mainSectionTabBar(
-            context,
-            controller: _tabController,
-            onTap: _selectAiTab,
-            items: [
-              (icon: Icons.analytics_rounded, label: l.aiTabAnalysis),
-              (icon: Icons.chat_bubble_rounded, label: l.aiTabChat),
-            ],
-          ),
         ),
         body: Center(
           child: ConstrainedBox(
@@ -1621,13 +1497,27 @@ ${l.aiAssistantRules}''';
       );
     }
 
+    final activeTitle = _currentChatId != null
+        ? _chatHistory
+            .firstWhere(
+              (s) => s.id == _currentChatId,
+              orElse: () => AiChatSession(
+                id: '',
+                title: l.aiTitle,
+                messages: const [],
+                timestamp: DateTime.now(),
+              ),
+            )
+            .title
+        : l.aiTitle;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
       extendBodyBehindAppBar: true,
       appBar: _mainTabHeaderAppBar(
         context,
-        l.aiTitle,
+        activeTitle,
         leading: IconButton(
           tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
           icon: const Icon(Icons.menu_rounded),
@@ -1636,15 +1526,51 @@ ${l.aiAssistantRules}''';
             widget.onOpenDrawer?.call(_buildSidebar());
           },
         ),
-        bottom: _mainSectionTabBar(
-          context,
-          controller: _tabController,
-          onTap: _selectAiTab,
-          items: [
-            (icon: Icons.analytics_rounded, label: l.aiTabAnalysis),
-            (icon: Icons.chat_bubble_rounded, label: l.aiTabChat),
-          ],
-        ),
+        actions: [
+          IconButton(
+            tooltip: l.aiTabChat,
+            icon: const Icon(Icons.edit_square, size: 20),
+            onPressed: () {
+              _hapticAction();
+              _startNewChat();
+            },
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(_aiRadius(16)),
+            ),
+            onSelected: (value) async {
+              if (value == 'clear') {
+                _startNewChat();
+              } else if (value == 'settings') {
+                await _openSettings();
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'clear',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete_sweep_outlined, size: 20),
+                    const SizedBox(width: 12),
+                    Text(l.aiClearResult),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    const Icon(Icons.settings_outlined, size: 20),
+                    const SizedBox(width: 12),
+                    Text(l.settingsTitle),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -1654,7 +1580,7 @@ ${l.aiAssistantRules}''';
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: _aiContentMaxWidth(context, mode),
+                maxWidth: _aiContentMaxWidth(context, _AiMode.chat),
               ),
               child: SizedBox(height: constraints.maxHeight, child: body),
             ),
@@ -1741,8 +1667,79 @@ class _MainTabTransitionLayer extends StatelessWidget {
   }
 }
 
+class _TabletTabTransitionLayer extends StatelessWidget {
+  final int selectedIndex;
+  final int previousIndex;
+  final List<Widget> pages;
+
+  const _TabletTabTransitionLayer({
+    required this.selectedIndex,
+    required this.previousIndex,
+    required this.pages,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final duration = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 320);
+    const curve = Curves.easeOutCubic;
+
+    // Moving downwards (increasing index) -> incoming slides from bottom (positive Y)
+    // Moving upwards (decreasing index) -> incoming slides from top (negative Y)
+    final direction = selectedIndex >= previousIndex ? 1.0 : -1.0;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: pages.asMap().entries.map((entry) {
+        final index = entry.key;
+        final active = index == selectedIndex;
+        final itemDirection = active ? direction : -direction;
+
+        final targetOffset = active
+            ? Offset.zero
+            : Offset(0, 0.035 * itemDirection);
+        final targetScale = active ? 1.0 : 0.985;
+        final targetOpacity = active ? 1.0 : 0.0;
+
+        return IgnorePointer(
+          ignoring: !active,
+          child: ExcludeSemantics(
+            excluding: !active,
+            child: AnimatedSlide(
+              key: ValueKey('tablet-tab-slide-$index'),
+              offset: targetOffset,
+              duration: duration,
+              curve: curve,
+              child: AnimatedScale(
+                key: ValueKey('tablet-tab-scale-$index'),
+                scale: targetScale,
+                duration: duration,
+                curve: curve,
+                alignment: Alignment.center,
+                child: AnimatedOpacity(
+                  key: ValueKey('tablet-tab-opacity-$index'),
+                  opacity: targetOpacity,
+                  duration: duration,
+                  curve: Curves.easeOutCubic,
+                  child: TickerMode(
+                    enabled: active,
+                    child: entry.value,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(growable: false),
+    );
+  }
+}
+
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
+  int _previousIndex = 0;
   bool _showTutorial = false;
   int _tutorialStep = 0;
   StreamSubscription<NotificationActionEvent>? _notificationActionSub;
@@ -1960,7 +1957,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   void _onAiEnabledChanged() {
     if (!mounted) return;
-    if (!aiEnabledNotifier.value && _selectedIndex == 4) _selectedIndex = 0;
+    if (!aiEnabledNotifier.value && _selectedIndex == 4) {
+      _previousIndex = _selectedIndex;
+      _selectedIndex = 0;
+    }
     setState(() {});
   }
 
@@ -1969,6 +1969,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     setState(() {
       _showTutorial = true;
       _tutorialStep = 0;
+      _previousIndex = _selectedIndex;
       _selectedIndex = _tutorialTargets.first;
     });
   }
@@ -2003,6 +2004,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
     setState(() {
       _tutorialStep += 1;
+      _previousIndex = _selectedIndex;
       _selectedIndex = _tutorialTargets[_tutorialStep];
     });
   }
@@ -2011,6 +2013,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     if (_tutorialStep <= 0) return;
     setState(() {
       _tutorialStep -= 1;
+      _previousIndex = _selectedIndex;
       _selectedIndex = _tutorialTargets[_tutorialStep];
     });
   }
@@ -2018,7 +2021,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void _onNavTap(int index) {
     if (index == 4 && !aiEnabledNotifier.value) return;
     if (_selectedIndex != index) {
-      setState(() => _selectedIndex = index);
+      setState(() {
+        _previousIndex = _selectedIndex;
+        _selectedIndex = index;
+      });
     }
   }
 
@@ -2198,10 +2204,25 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             : mq.padding.bottom + 104,
                       ),
                     ),
-                    child: ValueListenableBuilder<bool>(
-                      valueListenable: mainTabFadeUpEnabledNotifier,
-                      builder: (context, animationsEnabled, _) {
-                        final pages = _pages;
+                    child: isTablet
+                        ? _TabletTabTransitionLayer(
+                            selectedIndex: _selectedIndex,
+                            previousIndex: _previousIndex,
+                            pages: _pages
+                                .asMap()
+                                .entries
+                                .map(
+                                  (entry) => _buildPageWithBackground(
+                                    context,
+                                    entry.value,
+                                  ),
+                                )
+                                .toList(growable: false),
+                          )
+                        : ValueListenableBuilder<bool>(
+                            valueListenable: mainTabFadeUpEnabledNotifier,
+                            builder: (context, animationsEnabled, _) {
+                              final pages = _pages;
 
                         if (!animationsEnabled ||
                             MediaQuery.of(context).disableAnimations) {
