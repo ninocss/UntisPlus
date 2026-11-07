@@ -378,6 +378,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 640),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 12),
                     // Progress header

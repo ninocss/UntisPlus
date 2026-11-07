@@ -89,7 +89,11 @@ void main() {
       expect(constrainedBoxFinder, findsOneWidget);
 
       final contentSize = tester.getSize(constrainedBoxFinder);
-      expect(contentSize.width, lessThanOrEqualTo(640.0));
+      expect(contentSize.width, equals(640.0));
+      expect(
+        tester.getTopLeft(constrainedBoxFinder).dx,
+        equals((1024.0 - 640.0) / 2),
+      );
     },
   );
 }
