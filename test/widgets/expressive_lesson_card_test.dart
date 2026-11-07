@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:untisplus/l10n.dart';
 import 'package:untisplus/main.dart';
-import 'package:untisplus/widgets/expressive_lesson_card.dart';
 
 void main() {
   testWidgets('ExpressiveLessonCard renders subject badge, teacher and room', (
