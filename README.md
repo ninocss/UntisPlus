@@ -24,7 +24,7 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 | Aspect | Specification |
 | :--- | :--- |
 | **Data Policy** | Private by default. Credentials and schedule data never leave your device. (Zero cloud data sharing when using Local AI)|
-| **Current Version** | `5.7.0` |
+| **Current Version** | `5.7.1` |
 | **Target Platforms** | Android, iOS |
 | **Languages** | English, Deutsch, Español, Français |
 
