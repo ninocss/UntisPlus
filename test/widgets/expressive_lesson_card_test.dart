@@ -35,7 +35,7 @@ void main() {
   });
 
   testWidgets(
-    'ExpressiveLessonCard shows Entfaellt badge, hatch pattern, and strikethrough when cancelled',
+    'ExpressiveLessonCard shows hatch pattern and strikethrough when cancelled',
     (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -61,11 +61,7 @@ void main() {
       expect(find.text('GE'), findsOneWidget);
       expect(find.text('Marcus Hill'), findsOneWidget);
       expect(find.text('History Hall'), findsOneWidget);
-      expect(find.text('Entfällt'), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('expressive-lesson-cancelled-pill')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const ValueKey('expressive-lesson-cancelled-pill')), findsNothing);
       expect(
         find.byKey(const ValueKey('expressive-lesson-hatch-pattern')),
         findsOneWidget,
@@ -74,7 +70,7 @@ void main() {
   );
 
   testWidgets(
-    'ExpressiveLessonCard shows Cancelled badge when locale is English',
+    'ExpressiveLessonCard does not show Cancelled badge when locale is English',
     (tester) async {
       final prevLocale = appLocaleNotifier.value;
       appLocaleNotifier.value = 'en';
@@ -101,11 +97,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Cancelled'), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('expressive-lesson-cancelled-pill')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const ValueKey('expressive-lesson-cancelled-pill')), findsNothing);
     },
   );
 

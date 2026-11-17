@@ -77,15 +77,10 @@ class _ExpressiveNowWaveIndicatorState extends State<ExpressiveNowWaveIndicator>
             Expanded(
               child: ShaderMask(
                 shaderCallback: (bounds) {
-                  if (bounds.width <= 24) {
-                    return const LinearGradient(
-                      colors: [Colors.white, Colors.transparent],
-                    ).createShader(bounds);
-                  }
-                  final fadeStart = ((bounds.width - 24) / bounds.width).clamp(0.0, 1.0);
+                  final fadeWidth = bounds.width * 0.15; // 15% fade from each side
                   return LinearGradient(
-                    colors: const [Colors.white, Colors.white, Colors.transparent],
-                    stops: [0.0, fadeStart, 1.0],
+                    colors: const [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
+                    stops: [0.0, fadeWidth / bounds.width, 1.0 - (fadeWidth / bounds.width), 1.0],
                   ).createShader(bounds);
                 },
                 blendMode: BlendMode.dstIn,
@@ -144,11 +139,14 @@ class _ExpressiveWavePainter extends CustomPainter {
     path.moveTo(x, midY);
 
     while (x < size.width + wavelength) {
-      // Replicate SVG path M0 5 Q10 -1 20 5 T40 5 where height is 10
       path.quadraticBezierTo(x + 10.0, midY - 6.0, x + 20.0, midY);
       path.quadraticBezierTo(x + 30.0, midY + 6.0, x + 40.0, midY);
       x += 40.0;
     }
+    
+    // Ensure we don't draw outside bounds
+    final clipPath = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.clipPath(clipPath);
 
     canvas.drawPath(path, paint);
   }

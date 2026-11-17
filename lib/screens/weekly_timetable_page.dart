@@ -224,7 +224,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         if (s.isNotEmpty) allSubjects.add(s);
       }
     }
-    knownSubjectsNotifier.value = allSubjects;
+    knownSubjectsNotifier.value = Set<String>.from(knownSubjectsNotifier.value)..addAll(allSubjects);
   }
 
   Future<Map<int, List<dynamic>>?> _loadWeekFromCache({

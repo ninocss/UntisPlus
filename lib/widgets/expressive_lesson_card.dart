@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../l10n.dart';
-import '../main.dart';
-
 /// The 7 distinct asymmetric corner radius variants from the Figma preview.
 enum ExpressiveShapeVariant {
   shape0, // ma: 34, 34, 12, 34
@@ -289,7 +286,6 @@ class _ExpressiveLessonCardState extends State<ExpressiveLessonCard> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = widget.isDark;
-    final l = appL10nFor(appLocaleNotifier.value);
 
     // Harmonize colors with Untis+ theme and subject color
     final primaryColor = widget.fgColor ?? widget.tone?.inkColor ?? cs.primary;
@@ -307,8 +303,8 @@ class _ExpressiveLessonCardState extends State<ExpressiveLessonCard> {
             : const Color(0xFFFFEEF2))
         : (widget.fgColor != null
             ? (isDark
-                ? Color.alphaBlend(primaryColor.withValues(alpha: 0.16), const Color(0xFF1E201B))
-                : Color.alphaBlend(primaryColor.withValues(alpha: 0.11), cs.surfaceContainerLowest))
+                ? Color.alphaBlend(primaryColor.withValues(alpha: 0.12), const Color(0xFF1E201B))
+                : Color.alphaBlend(primaryColor.withValues(alpha: 0.08), cs.surfaceContainerLowest))
             : resolvedTone.cardColor);
 
     final cardInkColor = widget.isCancelled
@@ -485,7 +481,7 @@ class _ExpressiveLessonCardState extends State<ExpressiveLessonCard> {
                       Icon(
                         Icons.swap_horiz_rounded,
                         size: isHeightCompact ? 10.5 : 12.0,
-                        color: cardInkColor.withValues(alpha: 0.85),
+                        color: cardInkColor.withValues(alpha: 0.5),
                       ),
                     ],
                     if (widget.hasHomework || widget.hasExam) ...[
@@ -495,7 +491,7 @@ class _ExpressiveLessonCardState extends State<ExpressiveLessonCard> {
                             ? Icons.assignment_turned_in_rounded
                             : Icons.assignment_rounded,
                         size: isHeightCompact ? 10.0 : 11.5,
-                        color: cardInkColor.withValues(alpha: 0.85),
+                        color: cardInkColor.withValues(alpha: 0.5),
                       ),
                     ],
                     if (widget.isTeacherMissing) ...[
@@ -503,7 +499,7 @@ class _ExpressiveLessonCardState extends State<ExpressiveLessonCard> {
                       Icon(
                         Icons.person_off_rounded,
                         size: isHeightCompact ? 10.0 : 11.5,
-                        color: Colors.deepOrange.withValues(alpha: 0.9),
+                        color: Colors.deepOrange.withValues(alpha: 0.6),
                       ),
                     ],
                   ],
@@ -517,7 +513,7 @@ class _ExpressiveLessonCardState extends State<ExpressiveLessonCard> {
 
     return Semantics(
       button: true,
-      label: '${widget.subject}, ${widget.teacher}, ${widget.room}${widget.isCancelled ? l.expressiveLessonSemanticsCancelled : ''}',
+      label: '${widget.subject}, ${widget.teacher}, ${widget.room}',
       child: Listener(
         behavior: HitTestBehavior.translucent,
         onPointerDown: (_) => _handlePointerDown(),
@@ -542,10 +538,10 @@ class _ExpressiveLessonCardState extends State<ExpressiveLessonCard> {
               boxShadow: widget.isNow
                   ? [
                       BoxShadow(
-                        color: primaryColor.withValues(alpha: isDark ? 0.40 : 0.28),
-                        blurRadius: 14,
-                        spreadRadius: 1,
-                        offset: const Offset(0, 3),
+                        color: primaryColor.withValues(alpha: isDark ? 0.25 : 0.15),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 1),
                       ),
                     ]
                   : [
@@ -579,34 +575,6 @@ class _ExpressiveLessonCardState extends State<ExpressiveLessonCard> {
                     padding: effectivePadding,
                     child: content,
                   ),
-                  if (widget.isCancelled && !isHeightMinimal)
-                    Positioned(
-                      top: 7,
-                      right: 8,
-                      child: Container(
-                        key: const ValueKey('expressive-lesson-cancelled-pill'),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: (isDark ? const Color(0xFF633B48) : Colors.white).withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: const Color(0xFF633B48).withValues(alpha: 0.3),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Text(
-                          l.expressiveLessonCancelled,
-                          style: TextStyle(
-                            color: isDark ? Colors.white : const Color(0xFF633B48),
-                            fontSize: 8.0,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
