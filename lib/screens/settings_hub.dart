@@ -161,6 +161,16 @@ final _lessonCardStylePreference = intPreference(
   notifier: lessonCardStyleNotifier,
   normalize: (value) => value.clamp(0, 4).toInt(),
 );
+final _lessonCleanDesignPreference = boolPreference(
+  key: 'lessonCleanDesign',
+  defaultValue: false,
+  notifier: lessonCleanDesignNotifier,
+);
+final _lessonExpressiveDesignPreference = boolPreference(
+  key: 'lessonExpressiveDesign',
+  defaultValue: false,
+  notifier: lessonExpressiveDesignNotifier,
+);
 final _glowEffectsPreference = boolPreference(
   key: 'glowEffectsEnabled',
   defaultValue: false,
@@ -298,12 +308,13 @@ final _devServerPasswordPreference = stringPreference(
   defaultValue: '',
   notifier: devServerPasswordNotifier,
 );
-final _devModeNotificationStylePreference = enumPreference<DevModeNotificationStyle>(
-  key: 'devModeNotificationStyle',
-  defaultValue: DevModeNotificationStyle.popup,
-  notifier: devModeNotificationStyleNotifier,
-  values: DevModeNotificationStyle.values,
-);
+final _devModeNotificationStylePreference =
+    enumPreference<DevModeNotificationStyle>(
+      key: 'devModeNotificationStyle',
+      defaultValue: DevModeNotificationStyle.popup,
+      notifier: devModeNotificationStyleNotifier,
+      values: DevModeNotificationStyle.values,
+    );
 final _showFullTeacherNamesPreference = boolPreference(
   key: 'showFullTeacherNames',
   defaultValue: true,
@@ -358,8 +369,9 @@ Future<void> _settingsSetDevServerUsername(String value) =>
 Future<void> _settingsSetDevServerPassword(String value) =>
     SettingsStore.instance.write(_devServerPasswordPreference, value);
 
-Future<void> _settingsSetDevModeNotificationStyle(DevModeNotificationStyle value) =>
-    SettingsStore.instance.write(_devModeNotificationStylePreference, value);
+Future<void> _settingsSetDevModeNotificationStyle(
+  DevModeNotificationStyle value,
+) => SettingsStore.instance.write(_devModeNotificationStylePreference, value);
 
 Future<void> _settingsSetLocale(String code) async {
   await ensureDateFormattingForLocale(code);
@@ -383,7 +395,6 @@ Future<void> _settingsSetVisualTheme(AppThemeId theme) async {
 
 Future<void> _settingsSetShowCancelled(bool value) =>
     SettingsStore.instance.write(_showCancelledPreference, value);
-
 
 Future<void> _settingsSetTimetableDaySpan(int value) async {
   final normalized = value.clamp(1, 3).toInt();
@@ -423,8 +434,6 @@ Future<void> _settingsSetSwipeBackGesture(bool value) async {
   swipeBackGestureNotifier.value = value;
   await SettingsStore.instance.writeRaw('swipeBackGesture', value);
 }
-
-
 
 Future<void> _settingsSetTimetableSwitchAnimation(int value) =>
     SettingsStore.instance.write(_timetableSwitchAnimationPreference, value);
@@ -497,6 +506,15 @@ Future<void> _settingsSetMonochromeLessonColor(int value) =>
 
 Future<void> _settingsSetLessonCardStyle(int value) =>
     SettingsStore.instance.write(_lessonCardStylePreference, value);
+
+Future<void> _settingsSetLessonCleanDesign(bool value) =>
+    SettingsStore.instance.write(_lessonCleanDesignPreference, value);
+
+Future<void> _settingsSetLessonExpressiveDesign(bool value) =>
+    SettingsStore.instance.write(_lessonExpressiveDesignPreference, value);
+
+Future<void> settingsSetLessonExpressiveDesign(bool value) =>
+    _settingsSetLessonExpressiveDesign(value);
 
 Future<void> _settingsSetGlowEffectsEnabled(bool value) =>
     SettingsStore.instance.write(_glowEffectsPreference, value);
@@ -663,6 +681,12 @@ Future<void> _settingsSetAiProvider(String provider) async {
   aiProvider = _normalizeAiProvider(provider);
   await SettingsStore.instance.writeRaw('aiProvider', aiProvider);
 
+  if (aiProvider == 'custom') {
+    // Restore the free-form model id the user entered for this provider.
+    aiModel = aiCustomModel;
+    await SettingsStore.instance.writeRaw('aiModel', aiModel);
+    return;
+  }
   final models = _modelsForProvider(
     aiProvider,
     customCompatibility: aiCustomCompatibility,
@@ -676,6 +700,10 @@ Future<void> _settingsSetAiProvider(String provider) async {
 Future<void> _settingsSetAiModel(String model) async {
   aiModel = model;
   await SettingsStore.instance.writeRaw('aiModel', aiModel);
+  if (aiProvider == 'custom') {
+    aiCustomModel = model;
+    await SettingsStore.instance.writeRaw('aiCustomModel', model);
+  }
 }
 
 Future<void> _settingsSetAiCustomCompatibility(String compatibility) async {
@@ -684,6 +712,7 @@ Future<void> _settingsSetAiCustomCompatibility(String compatibility) async {
     'aiCustomCompatibility',
     aiCustomCompatibility,
   );
+  if (aiProvider == 'custom') return;
 
   final models = _modelsForProvider(
     aiProvider,
@@ -760,8 +789,6 @@ Future<void> _settingsSyncFromPrefs() async {
       prefs.getBool('swipeBackGesture') ??
       (defaultTargetPlatform == TargetPlatform.iOS);
 
-
-
   await store.load(_blurStrengthPreference);
   await store.load(_headerStylePreference);
   await store.load(_surfaceBlurEnabledPreference);
@@ -778,6 +805,8 @@ Future<void> _settingsSyncFromPrefs() async {
   await store.load(_monochromeLessonsPreference);
   await store.load(_monochromeLessonColorPreference);
   await store.load(_lessonCardStylePreference);
+  await store.load(_lessonCleanDesignPreference);
+  await store.load(_lessonExpressiveDesignPreference);
   await store.load(_glowEffectsPreference);
   await store.load(_lessonBlurEnabledPreference);
   await store.load(_lessonBlurAmountPreference);
@@ -828,36 +857,52 @@ class SettingsHubPage extends StatefulWidget {
 
 class _SettingsHubPageState extends State<SettingsHubPage> {
   int _selectedDetail = 0;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
-  String _sectionTitle(AppL10n l, String key) {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  String _hubLabel(AppL10n l, String key) {
     const labels = <String, Map<String, String>>{
       'de': {
-        'school': 'Schule & Stundenplan',
-        'personalize': 'Darstellung & Widgets',
-        'smart': 'KI & Automatisierung',
-        'data': 'Account & Daten',
-        'app': 'App & Support',
+        'teaching': 'Unterricht & Alltag',
+        'design': 'Design & System',
+        'ai': 'KI & Smarte Features',
+        'data_support': 'Daten, App & Support',
+        'search_hint': 'Einstellungen durchsuchen…',
+        'search_empty': 'Keine passenden Einstellungen gefunden',
+        'feedback_report': 'Feedback & Problem melden',
       },
       'en': {
-        'school': 'School & timetable',
-        'personalize': 'Appearance & widgets',
-        'smart': 'AI & automation',
-        'data': 'Account & data',
-        'app': 'App & support',
+        'teaching': 'Classes & daily life',
+        'design': 'Design & system',
+        'ai': 'AI & smart features',
+        'data_support': 'Data, app & support',
+        'search_hint': 'Search settings…',
+        'search_empty': 'No matching settings found',
+        'feedback_report': 'Feedback & report issue',
       },
       'fr': {
-        'school': 'École & emploi du temps',
-        'personalize': 'Apparence & widgets',
-        'smart': 'IA & automatisation',
-        'data': 'Compte & données',
-        'app': 'App & assistance',
+        'teaching': 'Cours & quotidien',
+        'design': 'Design & système',
+        'ai': 'IA & fonctions intelligentes',
+        'data_support': 'Données, app & support',
+        'search_hint': 'Rechercher dans les paramètres…',
+        'search_empty': 'Aucun paramètre correspondant',
+        'feedback_report': 'Avis & signaler un problème',
       },
       'es': {
-        'school': 'Escuela y horario',
-        'personalize': 'Apariencia y widgets',
-        'smart': 'IA y automatización',
-        'data': 'Cuenta y datos',
-        'app': 'App y soporte',
+        'teaching': 'Clases y día a día',
+        'design': 'Diseño y sistema',
+        'ai': 'IA y funciones inteligentes',
+        'data_support': 'Datos, app y soporte',
+        'search_hint': 'Buscar ajustes…',
+        'search_empty': 'No se encontraron ajustes',
+        'feedback_report': 'Comentarios y reportar problema',
       },
     };
     return (labels[l.locale] ?? labels['en']!)[key] ?? key;
@@ -870,7 +915,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     required List<_SettingsHubItem> allItems,
   }) {
     if (item.onTap != null) {
-      HapticFeedback.selectionClick();
+      AppHaptics.selection();
       item.onTap!();
       return;
     }
@@ -879,14 +924,307 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     if (expanded) {
       final index = allItems.indexOf(item);
       if (index >= 0 && index != _selectedDetail) {
-        HapticFeedback.selectionClick();
+        AppHaptics.selection();
         setState(() => _selectedDetail = index);
       }
       return;
     }
 
-    HapticFeedback.selectionClick();
+    AppHaptics.selection();
     Navigator.push(context, _buildBouncyRoute(item.pageBuilder!()));
+  }
+
+  Future<void> _showFeedbackAndIssueSheet(BuildContext context, AppL10n l) async {
+    final choice = await _showUnifiedOptionSheet<String>(
+      context: context,
+      title: _hubLabel(l, 'feedback_report'),
+      subtitle: l.settingsGiveFeedbackDesc,
+      options: [
+        _SheetOption(
+          value: 'feedback',
+          title: l.settingsGiveFeedback,
+          subtitle: l.settingsGiveFeedbackDesc,
+          icon: Icons.feedback_rounded,
+        ),
+        _SheetOption(
+          value: 'issue',
+          title: l.settingsReportIssue,
+          subtitle: l.settingsReportIssueDesc,
+          icon: Icons.bug_report_rounded,
+        ),
+      ],
+    );
+    if (!context.mounted || choice == null) return;
+    if (choice == 'issue') {
+      await url_launcher.launchUrlString(
+        'https://github.com/ninocss/UntisPlus/issues',
+        mode: url_launcher.LaunchMode.externalApplication,
+      );
+      return;
+    }
+    if (!WishKit.isConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.settingsFeedbackNotConfigured),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: l.settingsOpenGitHub,
+            onPressed: () => url_launcher.launchUrlString(
+              'https://github.com/ninocss/UntisPlus/issues',
+              mode: url_launcher.LaunchMode.externalApplication,
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => WishKit.feedbackPage()));
+  }
+
+  Widget _buildAppBarAccountBadge(
+    BuildContext context, {
+    required AppL10n l,
+    required _SettingsHubItem accountItem,
+    required bool expanded,
+    required List<_SettingsHubItem> allItems,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final accountIndex = allItems.indexOf(accountItem);
+    final selected = expanded && accountIndex == _selectedDetail;
+    final isCompact = !expanded || MediaQuery.sizeOf(context).width < 600;
+
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        untisAccountsNotifier,
+        demoModeNotifier,
+        devModeNotifier,
+      ]),
+      builder: (context, _) {
+        final prefs = SettingsStore.instance.preferences;
+        final accounts = untisAccountsNotifier.value;
+        UntisAccount? activeAccount;
+        for (final acc in accounts) {
+          if (acc.id == activeUntisAccountId) {
+            activeAccount = acc;
+            break;
+          }
+        }
+        final rawUser =
+            activeAccount?.username ?? (prefs.getString('username') ?? '');
+        final isDemo = demoModeNotifier.value;
+        final isDev = devModeNotifier.value;
+
+        final displayUser = rawUser.trim().isNotEmpty
+            ? rawUser.trim()
+            : (isDemo ? l.settingsDemoMode : l.settingsHubAccount);
+
+        final initials = rawUser.trim().isNotEmpty
+            ? rawUser
+                .trim()
+                .split(RegExp(r'[\s._-]+'))
+                .where((part) => part.isNotEmpty)
+                .take(2)
+                .map((part) => part[0].toUpperCase())
+                .join()
+            : '';
+
+        return Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              key: const ValueKey('settings-compact-account-header'),
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => _activateItem(
+                context,
+                accountItem,
+                expanded: expanded,
+                allItems: allItems,
+              ),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isCompact ? 4 : 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? cs.primaryContainer
+                      : cs.surfaceContainerHighest.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: selected
+                        ? cs.primary.withValues(alpha: 0.35)
+                        : cs.outlineVariant.withValues(alpha: 0.22),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? cs.primary
+                            : cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: initials.isNotEmpty
+                          ? Text(
+                              initials,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                                color: selected
+                                    ? cs.onPrimary
+                                    : cs.onPrimaryContainer,
+                              ),
+                            )
+                          : Icon(
+                              isDemo
+                                  ? Icons.science_rounded
+                                  : Icons.person_rounded,
+                              size: 16,
+                              color: selected
+                                  ? cs.onPrimary
+                                  : cs.onPrimaryContainer,
+                            ),
+                    ),
+                    if (isDev || isDemo) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDev
+                              ? cs.tertiaryContainer
+                              : cs.secondaryContainer,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isDev ? 'DEV' : 'DEMO',
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 9,
+                            color: isDev
+                                ? cs.onTertiaryContainer
+                                : cs.onSecondaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (!isCompact) ...[
+                      const SizedBox(width: 6),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 100),
+                        child: Text(
+                          displayUser,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
+                            color: selected
+                                ? cs.onPrimaryContainer
+                                : cs.onSurface,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context, AppL10n l) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = untisThemeTokensOf(context);
+    final isExpressive = _usesExpressiveComponents(context);
+    final double defaultRadius = isExpressive ? 28.0 : tokens.surfaceRadius;
+    final radius = BorderRadius.circular(
+      _resolvedSurfaceCornerRadius(defaultRadius),
+    );
+
+    return ThemedSurface(
+      borderRadius: radius,
+      color: isExpressive
+          ? cs.surfaceContainerHigh.withValues(alpha: 0.55)
+          : null,
+      border: Border.all(
+        color: tokens.id == AppThemeId.manga
+            ? cs.outline
+            : cs.outlineVariant.withValues(alpha: isExpressive ? 0.20 : 0.32),
+        width: tokens.borderWidth,
+      ),
+      respectSurfaceCornerPreference: false,
+      showShadow: false,
+      child: TextField(
+        key: const ValueKey('settings-search-field'),
+        controller: _searchController,
+        onChanged: (value) => setState(() => _searchQuery = value),
+        textAlignVertical: TextAlignVertical.center,
+        style: GoogleFonts.outfit(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: cs.onSurface,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          filled: false,
+          fillColor: Colors.transparent,
+          hintText: _hubLabel(l, 'search_hint'),
+          hintStyle: GoogleFonts.outfit(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.75),
+          ),
+          prefixIcon: Icon(Icons.search_rounded, size: 21, color: cs.primary),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 44,
+            minHeight: 44,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                )
+              : null,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+        ),
+      ),
+    );
   }
 
   Widget _buildHubItem(
@@ -894,114 +1232,103 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     _SettingsHubItem item, {
     required bool expanded,
     required List<_SettingsHubItem> allItems,
-    required bool isFirst,
-    required bool isLast,
   }) {
     final cs = Theme.of(context).colorScheme;
     final itemIndex = allItems.indexOf(item);
     final selected =
         expanded && item.pageBuilder != null && itemIndex == _selectedDetail;
-    final radius = _settingsSegmentRadius(
-      context,
-      isFirst: isFirst,
-      isLast: isLast,
-    );
+    final isExpressive = _usesExpressiveComponents(context);
 
     final tile = Semantics(
       button: true,
       selected: selected,
       label: '${item.title}. ${item.subtitle}',
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
+        margin: selected
+            ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4)
+            : EdgeInsets.zero,
         decoration: BoxDecoration(
           color: selected
-              ? cs.secondaryContainer.withValues(alpha: 0.78)
-              : cs.surfaceContainerLow.withValues(alpha: 0.82),
-          borderRadius: radius,
-          border: Border.all(
-            color: selected
-                ? cs.primary.withValues(alpha: 0.42)
-                : cs.outlineVariant.withValues(alpha: 0.30),
-          ),
+              ? cs.secondaryContainer.withValues(alpha: 0.85)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(isExpressive ? 20 : 16),
         ),
-        child: Material(
-          type: MaterialType.transparency,
-          borderRadius: radius,
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => _activateItem(
-              context,
-              item,
-              expanded: expanded,
-              allItems: allItems,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(isExpressive ? 20 : 16),
+          onTap: () => _activateItem(
+            context,
+            item,
+            expanded: expanded,
+            allItems: allItems,
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: selected ? 12 : 16,
+              vertical: isExpressive ? 11 : 10,
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              child: Row(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? item.iconColor.withValues(alpha: 0.20)
-                          : item.iconBackground,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(item.icon, color: item.iconColor, size: 21),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: isExpressive ? 44 : 40,
+                  height: isExpressive ? 44 : 40,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? item.iconColor.withValues(alpha: 0.24)
+                        : item.iconBackground,
+                    borderRadius: BorderRadius.circular(isExpressive ? 14 : 13),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          item.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
-                            fontWeight: selected
-                                ? FontWeight.w800
-                                : FontWeight.w600,
-                            fontSize: 15,
-                            color: selected
-                                ? cs.onSecondaryContainer
-                                : cs.onSurface,
-                          ),
+                  child: Icon(item.icon, color: item.iconColor, size: isExpressive ? 22 : 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontWeight: selected
+                              ? FontWeight.w800
+                              : FontWeight.w700,
+                          fontSize: 15.5,
+                          color: selected
+                              ? cs.onSecondaryContainer
+                              : cs.onSurface,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item.subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12.5,
-                            color: selected
-                                ? cs.onSecondaryContainer.withValues(
-                                    alpha: 0.75,
-                                  )
-                                : cs.onSurfaceVariant,
-                          ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                          color: selected
+                              ? cs.onSecondaryContainer.withValues(alpha: 0.8)
+                              : cs.onSurfaceVariant,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Icon(
-                    item.pageBuilder != null
-                        ? (selected
-                              ? Icons.check_rounded
-                              : Icons.chevron_right_rounded)
-                        : Icons.open_in_new_rounded,
-                    size: 22,
-                    color: selected ? cs.primary : cs.onSurfaceVariant,
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 10),
+                Icon(
+                  item.pageBuilder != null
+                      ? (selected
+                            ? Icons.check_rounded
+                            : Icons.chevron_right_rounded)
+                      : Icons.open_in_new_rounded,
+                  size: 21,
+                  color: selected ? cs.primary : cs.onSurfaceVariant.withValues(alpha: 0.8),
+                ),
+              ],
             ),
           ),
         ),
@@ -1025,41 +1352,85 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     required bool expanded,
     required List<_SettingsHubItem> allItems,
   }) {
+    if (items.isEmpty) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
+    final tokens = untisThemeTokensOf(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 7),
+          padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
           child: Text(
             title,
             style: GoogleFonts.outfit(
               fontWeight: FontWeight.w800,
-              fontSize: 13,
+              fontSize: tokens.id == AppThemeId.manga ? 20 : 13.5,
               color: cs.primary,
-              letterSpacing: 0.15,
+              letterSpacing: tokens.id == AppThemeId.cyber ? 1.1 : 0.3,
             ),
           ),
         ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var index = 0; index < items.length; index++) ...[
-              _buildHubItem(
-                context,
-                items[index],
-                expanded: expanded,
-                allItems: allItems,
-                isFirst: index == 0,
-                isLast: index == items.length - 1,
+        AnimatedBuilder(
+          animation: Listenable.merge([
+            surfaceCornerModeNotifier,
+            surfaceCornerRadiusNotifier,
+          ]),
+          builder: (context, _) {
+            final isExpressive = _usesExpressiveComponents(context);
+            final double defaultRadius = isExpressive ? 26.0 : tokens.surfaceRadius;
+            final groupRadius = BorderRadius.circular(
+              _resolvedSurfaceCornerRadius(defaultRadius),
+            );
+            return ThemedSurface(
+              borderRadius: groupRadius,
+              border: Border.all(
+                color: tokens.id == AppThemeId.manga
+                    ? cs.outline
+                    : cs.outlineVariant.withValues(alpha: isExpressive ? 0.20 : 0.30),
+                width: tokens.borderWidth,
               ),
-              if (index < items.length - 1) const SizedBox(height: 4),
-            ],
-          ],
+              respectSurfaceCornerPreference: false,
+              showShadow: false,
+              child: Material(
+                type: MaterialType.transparency,
+                borderRadius: groupRadius,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var index = 0; index < items.length; index++) ...[
+                      _buildHubItem(
+                        context,
+                        items[index],
+                        expanded: expanded,
+                        allItems: allItems,
+                      ),
+                      if (index < items.length - 1)
+                        Divider(
+                          height: 1,
+                          thickness: 0.7,
+                          indent: isExpressive ? 74 : 68,
+                          endIndent: 16,
+                          color: cs.outlineVariant.withValues(alpha: isExpressive ? 0.20 : 0.26),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ],
     );
+  }
+
+  bool _matchesQuery(_SettingsHubItem item, String query) {
+    final normalized = query.trim().toLowerCase();
+    if (normalized.isEmpty) return true;
+    final terms = normalized.split(RegExp(r'\s+')).where((t) => t.isNotEmpty);
+    final haystack =
+        '${item.title} ${item.subtitle} ${item.searchKeywords}'.toLowerCase();
+    return terms.every(haystack.contains);
   }
 
   @override
@@ -1068,128 +1439,147 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final expanded = UntisLayout.isExpanded(context);
-
-    Color getAccent(int index) {
-      return switch (index % 6) {
-        0 => cs.primary,
-        1 => cs.tertiary,
-        2 => cs.secondary,
-        3 => cs.error,
-        4 => cs.inversePrimary,
-        _ => isDark ? cs.onTertiaryContainer : cs.tertiary,
-      };
-    }
+    final expanded = UntisLayout.isTablet(context);
 
     _SettingsHubItem makeItem({
-      required int index,
+      required Color semanticColor,
       required IconData icon,
       required String title,
       required String subtitle,
+      String searchKeywords = '',
       Widget Function()? pageBuilder,
       VoidCallback? onTap,
     }) {
-      final accent = getAccent(index);
+      final harmonized = Color.alphaBlend(
+        cs.primary.withValues(alpha: 0.22),
+        semanticColor,
+      );
       final iconColor = isDark
-          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.12), accent)
-          : accent;
+          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.22), harmonized)
+          : harmonized;
       return _SettingsHubItem(
         icon: icon,
-        iconBackground: accent.withValues(alpha: isDark ? 0.20 : 0.12),
+        iconBackground: harmonized.withValues(alpha: isDark ? 0.22 : 0.14),
         iconColor: iconColor,
         title: title,
         subtitle: subtitle,
+        searchKeywords: searchKeywords,
         pageBuilder: pageBuilder,
         onTap: onTap,
       );
     }
 
     final timetableItem = makeItem(
-      index: 0,
+      semanticColor: cs.primary,
       icon: Icons.calendar_view_week_rounded,
       title: l.settingsSectionTimetable,
       subtitle: l.settingsShowCancelled,
+      searchKeywords:
+          'stundenplan timetable raster woche tag ausfall lehrer animation karten design',
       pageBuilder: () => const SettingsTimetablePage(),
     );
     final subjectsItem = makeItem(
-      index: 1,
+      semanticColor: const Color(0xFF00897B),
       icon: Icons.school_rounded,
       title: l.settingsSectionSubjects,
       subtitle: l.settingsSectionColors,
+      searchKeywords: 'fächer subjects farben colors icons verstecken kürzel',
       pageBuilder: () => const SettingsSubjectsPage(),
     );
     final wrappedItem = makeItem(
-      index: 12,
-      icon: Icons.auto_awesome_rounded,
+      semanticColor: const Color(0xFFD81B60),
+      icon: Icons.insights_rounded,
       title: l.wrapped('title'),
       subtitle: l.wrapped('settingsDesc'),
+      searchKeywords: 'wrapped rückblick statistik jahresrückblick analyse',
       pageBuilder: () => const SchoolWrappedHub(),
     );
+    final appearanceItem = makeItem(
+      semanticColor: const Color(0xFF7E57C2),
+      icon: Icons.palette_rounded,
+      title: l.settingsAppearance,
+      subtitle: l.settingsCustomBackgrounds,
+      searchKeywords:
+          'darstellung erscheinungsbild design theme dark mode amoled blur hintergrund icon sprache language material you',
+      pageBuilder: () => const SettingsAppearancePage(),
+    );
+    final widgetsItem = makeItem(
+      semanticColor: const Color(0xFF3949AB),
+      icon: Icons.widgets_rounded,
+      title: l.widgets,
+      subtitle: l.widgetAccount,
+      searchKeywords: 'widgets homescreen startbildschirm editor',
+      pageBuilder: () => const SettingsWidgetsPage(),
+    );
     final notificationsItem = makeItem(
-      index: 2,
+      semanticColor: const Color(0xFFF57C00),
       icon: Icons.notifications_active_rounded,
       title: l.settingsHubNotifications,
       subtitle: l.settingsProgressivePush,
+      searchKeywords:
+          'benachrichtigungen push notifications briefing vertretung raumwechsel',
       pageBuilder: () => const SettingsNotificationsPage(),
     );
     final alarmItem = !kIsWeb && Platform.isAndroid
         ? makeItem(
-            index: 3,
+            semanticColor: const Color(0xFFE64A19),
             icon: Icons.alarm_rounded,
             title: l.alarmTitle,
             subtitle: l.alarmScheduleDesc,
+            searchKeywords: 'wecker alarm aufstehen klingeln',
             pageBuilder: () => const SettingsAlarmPage(),
           )
         : null;
-    final appearanceItem = makeItem(
-      index: 4,
-      icon: Icons.palette_rounded,
-      title: l.settingsAppearance,
-      subtitle: l.settingsCustomBackgrounds,
-      pageBuilder: () => const SettingsAppearancePage(),
-    );
-    final widgetsItem = makeItem(
-      index: 5,
-      icon: Icons.widgets_rounded,
-      title: l.widgets,
-      subtitle: l.widgetAccount,
-      pageBuilder: () => const SettingsWidgetsPage(),
-    );
     final aiItem = makeItem(
-      index: 6,
+      semanticColor: const Color(0xFF8E24AA),
       icon: Icons.auto_awesome_rounded,
       title: l.settingsSectionAI,
       subtitle: l.settingsAiProvider,
+      searchKeywords:
+          'ki ai gemini openai mistral api key modell prompt assistent lokal',
       pageBuilder: () => const SettingsAiPage(),
     );
     final accountItem = makeItem(
-      index: 7,
+      semanticColor: cs.primary,
       icon: Icons.manage_accounts_rounded,
       title: l.settingsHubAccount,
       subtitle: l.settingsDemoMode,
+      searchKeywords:
+          'konto account schule login abmelden wechseln demo entwickler dev server',
       pageBuilder: () => const SettingsAccountPage(),
     );
     final backupItem = makeItem(
-      index: 8,
+      semanticColor: const Color(0xFF1E88E5),
       icon: Icons.cloud_sync_rounded,
       title: l.settingsHubDataBackup,
       subtitle: l.settingsHubDataBackupDesc,
+      searchKeywords: 'backup daten export import sichern wiederherstellen',
       pageBuilder: () => const SettingsBackupPage(),
     );
     final updatesItem = kIsWeb || !Platform.isIOS
         ? makeItem(
-            index: 9,
+            semanticColor: const Color(0xFF2E7D32),
             icon: Icons.system_update_alt_rounded,
             title: l.settingsHubUpdatesAbout,
             subtitle: l.settingsAppVersion,
+            searchKeywords: 'updates version über about changelog github lizenz',
             pageBuilder: () => const SettingsAboutUpdatesPage(),
           )
         : null;
+    final feedbackReportItem = makeItem(
+      semanticColor: const Color(0xFF00ACC1),
+      icon: Icons.rate_review_rounded,
+      title: _hubLabel(l, 'feedback_report'),
+      subtitle: l.settingsGiveFeedbackDesc,
+      searchKeywords: 'feedback bug fehler problem melden ideen github wishkit',
+      onTap: () => _showFeedbackAndIssueSheet(context, l),
+    );
     final supportItem = makeItem(
-      index: 10,
+      semanticColor: const Color(0xFFEC407A),
       icon: Icons.volunteer_activism_rounded,
       title: l.settingsSupport,
       subtitle: l.settingsSupportDesc,
+      searchKeywords: 'support unterstützen spenden kofi',
       onTap: () {
         url_launcher.launchUrlString(
           'https://ko-fi.com/nino161er',
@@ -1197,62 +1587,32 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
         );
       },
     );
-    final feedbackItem = makeItem(
-      index: 11,
-      icon: Icons.feedback_rounded,
-      title: l.settingsGiveFeedback,
-      subtitle: l.settingsGiveFeedbackDesc,
-      onTap: () {
-        if (!WishKit.isConfigured) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l.settingsFeedbackNotConfigured),
-              behavior: SnackBarBehavior.floating,
-              action: SnackBarAction(
-                label: l.settingsOpenGitHub,
-                onPressed: () => url_launcher.launchUrlString(
-                  'https://github.com/ninocss/UntisPlus/issues',
-                  mode: url_launcher.LaunchMode.externalApplication,
-                ),
-              ),
-            ),
-          );
-          return;
-        }
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => WishKit.feedbackPage()),
-        );
-      },
-    );
-    final reportItem = makeItem(
-      index: 11,
-      icon: Icons.bug_report_rounded,
-      title: l.settingsReportIssue,
-      subtitle: l.settingsReportIssueDesc,
-      onTap: () {
-        url_launcher.launchUrlString(
-          'https://github.com/ninocss/UntisPlus/issues',
-          mode: url_launcher.LaunchMode.externalApplication,
-        );
-      },
-    );
 
-    final schoolItems = <_SettingsHubItem>[
+    final teachingItems = <_SettingsHubItem>[
       timetableItem,
       subjectsItem,
+      wrappedItem,
+    ].where((item) => _matchesQuery(item, _searchQuery)).toList();
+
+    final designItems = <_SettingsHubItem>[
+      appearanceItem,
+      widgetsItem,
       notificationsItem,
       ?alarmItem,
-    ];
-    final personalizeItems = <_SettingsHubItem>[appearanceItem, widgetsItem];
-    final smartItems = <_SettingsHubItem>[aiItem];
-    final dataItems = <_SettingsHubItem>[accountItem, backupItem];
-    final appItems = <_SettingsHubItem>[
+    ].where((item) => _matchesQuery(item, _searchQuery)).toList();
+
+    final aiItems = <_SettingsHubItem>[
+      aiItem,
+    ].where((item) => _matchesQuery(item, _searchQuery)).toList();
+
+    final dataSupportItems = <_SettingsHubItem>[
+      accountItem,
+      backupItem,
       ?updatesItem,
+      feedbackReportItem,
       supportItem,
-      feedbackItem,
-      reportItem,
-      wrappedItem,
-    ];
+    ].where((item) => _matchesQuery(item, _searchQuery)).toList();
+
     // Keep the internal detail indices stable for existing tablet navigation
     // and widget tests. Visual grouping is independent from this order.
     final items = <_SettingsHubItem>[
@@ -1267,10 +1627,15 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       ?alarmItem,
       ?updatesItem,
       supportItem,
-      feedbackItem,
-      reportItem,
+      feedbackReportItem,
       wrappedItem,
     ];
+
+    final hasAnySearchMatch =
+        teachingItems.isNotEmpty ||
+        designItems.isNotEmpty ||
+        aiItems.isNotEmpty ||
+        dataSupportItems.isNotEmpty;
 
     Widget settingsList({required bool expanded}) {
       final width = MediaQuery.sizeOf(context).width;
@@ -1280,7 +1645,27 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
           ? 24.0
           : 16.0;
       final bottom = mq.padding.bottom + (expanded ? 28 : 118);
-      final top = expanded ? 14.0 : mq.padding.top + kToolbarHeight + 14;
+      final top = expanded ? 10.0 : (mq.padding.top + kToolbarHeight + 10);
+
+      final sections = <Widget>[];
+      void addSection(String key, List<_SettingsHubItem> sectionItems) {
+        if (sectionItems.isEmpty) return;
+        if (sections.isNotEmpty) sections.add(const SizedBox(height: 16));
+        sections.add(
+          _buildSection(
+            context,
+            title: _hubLabel(l, key),
+            items: sectionItems,
+            expanded: expanded,
+            allItems: items,
+          ),
+        );
+      }
+
+      addSection('teaching', teachingItems);
+      addSection('design', designItems);
+      addSection('ai', aiItems);
+      addSection('data_support', dataSupportItems);
 
       return CustomScrollView(
         key: PageStorageKey<String>(
@@ -1294,45 +1679,33 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
             padding: EdgeInsets.fromLTRB(horizontal, top, horizontal, bottom),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                _buildSection(
-                  context,
-                  title: _sectionTitle(l, 'school'),
-                  items: schoolItems,
-                  expanded: expanded,
-                  allItems: items,
-                ),
-                const SizedBox(height: 16),
-                _buildSection(
-                  context,
-                  title: _sectionTitle(l, 'personalize'),
-                  items: personalizeItems,
-                  expanded: expanded,
-                  allItems: items,
-                ),
-                const SizedBox(height: 16),
-                _buildSection(
-                  context,
-                  title: _sectionTitle(l, 'smart'),
-                  items: smartItems,
-                  expanded: expanded,
-                  allItems: items,
-                ),
-                const SizedBox(height: 16),
-                _buildSection(
-                  context,
-                  title: _sectionTitle(l, 'data'),
-                  items: dataItems,
-                  expanded: expanded,
-                  allItems: items,
-                ),
-                const SizedBox(height: 16),
-                _buildSection(
-                  context,
-                  title: _sectionTitle(l, 'app'),
-                  items: appItems,
-                  expanded: expanded,
-                  allItems: items,
-                ),
+                _buildSearchBar(context, l),
+                const SizedBox(height: 14),
+                if (hasAnySearchMatch)
+                  ...sections
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 36),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.search_off_rounded,
+                          size: 36,
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          _hubLabel(l, 'search_empty'),
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ]),
             ),
           ),
@@ -1343,43 +1716,83 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     return Scaffold(
       extendBodyBehindAppBar: !expanded,
       backgroundColor: Colors.transparent,
-      appBar: _mainTabHeaderAppBar(context, l.settingsTitle),
-      body: _AnimatedBackground(
-        child: LayoutBuilder(
-          builder: (context, _) {
-            if (!expanded) return settingsList(expanded: false);
-
-            final detailIndex = _selectedDetail
-                .clamp(0, items.length - 1)
-                .toInt();
-            final detail =
-                items[detailIndex].pageBuilder?.call() ??
-                const SettingsTimetablePage();
-            final masterWidth = (MediaQuery.sizeOf(context).width * 0.34)
-                .clamp(350.0, 420.0)
-                .toDouble();
-
-            return Row(
-              key: const ValueKey('settings-master-detail'),
-              children: [
-                SizedBox(
-                  width: masterWidth,
-                  child: settingsList(expanded: true),
-                ),
-                VerticalDivider(
-                  width: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.45),
-                ),
-                Expanded(
-                  child: KeyedSubtree(
-                    key: ValueKey('settings-detail-$detailIndex'),
-                    child: detail,
-                  ),
+      appBar: expanded
+          ? null
+          : _mainTabHeaderAppBar(
+              context,
+              l.settingsTitle,
+              actions: [
+                _buildAppBarAccountBadge(
+                  context,
+                  l: l,
+                  accountItem: accountItem,
+                  expanded: false,
+                  allItems: items,
                 ),
               ],
-            );
-          },
-        ),
+            ),
+      body: LayoutBuilder(
+        builder: (context, _) {
+          if (!expanded) return settingsList(expanded: false);
+
+          final detailIndex = _selectedDetail
+              .clamp(0, items.length - 1)
+              .toInt();
+          final detail =
+              items[detailIndex].pageBuilder?.call() ??
+              const SettingsTimetablePage();
+          final masterWidth = (MediaQuery.sizeOf(context).width * 0.32)
+              .clamp(280.0, 380.0)
+              .toDouble();
+
+          return Row(
+            key: const ValueKey('settings-master-detail'),
+            children: [
+              SizedBox(
+                width: masterWidth,
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: mq.padding.top + kToolbarHeight,
+                      child: Padding(
+                        padding: EdgeInsets.only(top: mq.padding.top),
+                        child: _mainTabHeaderAppBar(
+                          context,
+                          l.settingsTitle,
+                          actions: [
+                            _buildAppBarAccountBadge(
+                              context,
+                              l: l,
+                              accountItem: accountItem,
+                              expanded: true,
+                              allItems: items,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Expanded(child: settingsList(expanded: true)),
+                  ],
+                ),
+              ),
+              VerticalDivider(
+                width: 1,
+                color: cs.outlineVariant.withValues(alpha: 0.45),
+              ),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: KeyedSubtree(
+                    key: ValueKey('settings-detail-$detailIndex'),
+                    child: SafeArea(bottom: false, child: detail),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1391,6 +1804,7 @@ class _SettingsHubItem {
   final Color iconColor;
   final String title;
   final String subtitle;
+  final String searchKeywords;
   final Widget Function()? pageBuilder;
   final VoidCallback? onTap;
 
@@ -1400,6 +1814,7 @@ class _SettingsHubItem {
     required this.iconColor,
     required this.title,
     required this.subtitle,
+    this.searchKeywords = '',
     this.pageBuilder,
     this.onTap,
   });
@@ -1422,4 +1837,3 @@ Future<void> _settingsSetAppIcon(String icon) async {
   final prefs = SettingsStore.instance.preferences;
   await prefs.setString('appIcon', icon);
 }
-

@@ -1,6 +1,6 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
+import '../../../core/defensive_parsers.dart';
 import '../../../core/sync_state.dart';
 import '../../../core/time_utils.dart';
 import '../../../data/webuntis/untis_endpoint.dart';
@@ -73,6 +73,7 @@ class SchoolInfoRepository {
     required String schoolName,
     required String sessionId,
     required String attachmentId,
+    String? messageId,
     Future<String?> Function()? reauthenticate,
   }) async {
     var activeSession = sessionId;
@@ -83,6 +84,7 @@ class SchoolInfoRepository {
           schoolName: schoolName,
           sessionId: activeSession,
           attachmentId: attachmentId,
+          messageId: messageId,
         );
       } on WebUntisFailure catch (failure) {
         final canRetry =
@@ -107,19 +109,46 @@ class SchoolInfoRepository {
     required String schoolName,
     required String sessionId,
     required String attachmentId,
+    String? messageId,
   }) async {
     WebUntisFailure? lastFailure;
-    final uri = Uri.parse(
+    final cookies = WebUntisMessageContextResolver.schoolCookies(schoolName);
+
+    if (messageId != null && messageId.isNotEmpty) {
+      final restPaths = [
+        '/WebUntis/api/rest/view/v3/messages/${Uri.encodeComponent(messageId)}/attachments/${Uri.encodeComponent(attachmentId)}',
+        '/WebUntis/api/rest/view/v2/messages/${Uri.encodeComponent(messageId)}/attachments/${Uri.encodeComponent(attachmentId)}',
+        '/WebUntis/api/rest/view/v1/messages/${Uri.encodeComponent(messageId)}/attachments/${Uri.encodeComponent(attachmentId)}',
+      ];
+      for (final path in restPaths) {
+        final uri = Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}$path');
+        for (final cookie in cookies) {
+          try {
+            return await _client.getBytes(
+              uri: uri,
+              headers: {
+                'Cookie': 'JSESSIONID=$sessionId; schoolname=$cookie',
+                'Accept': 'application/octet-stream, application/json, */*',
+              },
+            );
+          } on WebUntisFailure catch (failure) {
+            lastFailure = failure;
+          } catch (_) {}
+        }
+      }
+    }
+
+    final fallbackUri = Uri.parse(
       '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/messageFileRequest.do'
       '?file=${Uri.encodeQueryComponent(attachmentId)}',
     );
-    for (final cookie in _schoolCookies(schoolName)) {
+    for (final cookie in cookies) {
       try {
         return await _client.getBytes(
-          uri: uri,
+          uri: fallbackUri,
           headers: {
             'Cookie': 'JSESSIONID=$sessionId; schoolname=$cookie',
-            'Accept': 'application/octet-stream',
+            'Accept': 'application/octet-stream, */*',
           },
         );
       } on WebUntisFailure catch (failure) {
@@ -138,7 +167,7 @@ class SchoolInfoRepository {
     required String schoolName,
     required String sessionId,
   }) async {
-    final cookies = _schoolCookies(schoolName);
+    final cookies = WebUntisMessageContextResolver.schoolCookies(schoolName);
     WebUntisFailure? inboxFailure;
     WebUntisFailure? newsFailure;
     final initial = await Future.wait<List<Map<String, dynamic>>>([
@@ -236,7 +265,7 @@ class SchoolInfoRepository {
         if (result.isEmpty) continue;
         news = result
             .whereType<Map>()
-            .map(_stringKeyedMap)
+            .map(asStringDynamicMap)
             .toList(growable: false);
         break;
       }
@@ -265,6 +294,7 @@ class SchoolInfoRepository {
     );
 
     final messagePaths = const [
+      '/WebUntis/api/rest/view/v3/messages',
       '/WebUntis/api/rest/view/v2/messages',
       '/WebUntis/api/rest/view/v1/messages',
     ];
@@ -292,9 +322,9 @@ class SchoolInfoRepository {
     return incoming
         .whereType<Map>()
         .map((raw) {
-          final rawMap = _stringKeyedMap(raw);
+          final rawMap = asStringDynamicMap(raw);
           final nestedMessage = rawMap['message'] is Map
-              ? _stringKeyedMap(rawMap['message'] as Map)
+              ? asStringDynamicMap(rawMap['message'] as Map)
               : null;
           final map = <String, dynamic>{...rawMap};
           if (nestedMessage != null) {
@@ -333,20 +363,70 @@ class SchoolInfoRepository {
         'fileAttachments',
         'attachmentList',
         'files',
+        'attachedFiles',
+        'messageAttachments',
       ]) {
         final value = source[key];
-        if (value is! List) continue;
-        for (final rawAttachment in value) {
-          if (rawAttachment is! Map) continue;
-          final attachment = _stringKeyedMap(rawAttachment);
-          final id =
-              (attachment['fileId'] ??
-                      attachment['attachmentId'] ??
-                      attachment['fileAttachmentId'] ??
-                      attachment['id'] ??
-                      '')
-                  .toString()
-                  .trim();
+        if (value is List) {
+          for (final rawAttachment in value) {
+            if (rawAttachment is! Map) continue;
+            final attachment = asStringDynamicMap(rawAttachment);
+            final id = (attachment['fileId'] ??
+                    attachment['attachmentId'] ??
+                    attachment['fileAttachmentId'] ??
+                    attachment['id'] ??
+                    attachment['uuid'] ??
+                    attachment['storageId'] ??
+                    '')
+                .toString()
+                .trim();
+            final name = (attachment['fileRegularName'] ??
+                    attachment['fileName'] ??
+                    attachment['filename'] ??
+                    attachment['regularName'] ??
+                    attachment['name'] ??
+                    attachment['displayName'] ??
+                    attachment['title'] ??
+                    attachment['originalName'] ??
+                    attachment['originalFileName'] ??
+                    '')
+                .toString()
+                .trim();
+            if (id.isEmpty && name.isEmpty) continue;
+            if (id.isEmpty || seen.add(id)) attachments.add(attachment);
+          }
+        }
+      }
+      for (final key in const [
+        'attachment',
+        'fileAttachment',
+        'file',
+      ]) {
+        final value = source[key];
+        if (value is Map) {
+          final attachment = asStringDynamicMap(value);
+          final id = (attachment['fileId'] ??
+                  attachment['attachmentId'] ??
+                  attachment['fileAttachmentId'] ??
+                  attachment['id'] ??
+                  attachment['uuid'] ??
+                  attachment['storageId'] ??
+                  '')
+              .toString()
+              .trim();
+          final name = (attachment['fileRegularName'] ??
+                  attachment['fileName'] ??
+                  attachment['filename'] ??
+                  attachment['regularName'] ??
+                  attachment['name'] ??
+                  attachment['displayName'] ??
+                  attachment['title'] ??
+                  attachment['originalName'] ??
+                  attachment['originalFileName'] ??
+                  '')
+              .toString()
+              .trim();
+          if (id.isEmpty && name.isEmpty) continue;
           if (id.isEmpty || seen.add(id)) attachments.add(attachment);
         }
       }
@@ -377,7 +457,7 @@ class SchoolInfoRepository {
       final messages = data is Map ? data['messagesOfDay'] : null;
       if (messages is! List) continue;
       for (final raw in messages.whereType<Map>()) {
-        final map = _stringKeyedMap(raw);
+        final map = asStringDynamicMap(raw);
         output.add({
           ...map,
           'date': map['date'] ?? date,
@@ -468,18 +548,4 @@ class SchoolInfoRepository {
     }
     return const [];
   }
-
-  static List<String> _schoolCookies(String schoolName) {
-    final values = <String>[];
-    if (schoolName.isNotEmpty) {
-      try {
-        values.add('_${base64Encode(utf8.encode(schoolName))}');
-      } catch (_) {}
-      values.add(schoolName);
-    }
-    return values.toSet().toList(growable: false);
-  }
-
-  static Map<String, dynamic> _stringKeyedMap(Map raw) =>
-      raw.map((key, value) => MapEntry(key.toString(), value));
 }

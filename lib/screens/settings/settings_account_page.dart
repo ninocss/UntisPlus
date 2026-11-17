@@ -220,22 +220,28 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
     }
   }
 
-  Future<void> _editDevServerSchoolName(BuildContext context) async {
+  Future<void> _promptDevServerInputDialog({
+    required BuildContext context,
+    required String title,
+    required String hintText,
+    required String initialValue,
+    required Future<void> Function(String) onSave,
+    bool obscureText = false,
+  }) async {
     final l = appL10nFor(appLocaleNotifier.value);
-    final controller = TextEditingController(
-      text: devServerSchoolNameNotifier.value,
-    );
+    final controller = TextEditingController(text: initialValue);
     try {
       final value = await showUntisDialog<String>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: Text(l.settingsDevModeSchoolName),
+          title: Text(title),
           content: TextField(
             controller: controller,
             autofocus: true,
+            obscureText: obscureText,
             style: GoogleFonts.outfit(fontSize: 14),
             decoration: InputDecoration(
-              hintText: l.settingsDevModeSchoolNameDesc,
+              hintText: hintText,
               filled: true,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -257,124 +263,46 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
         ),
       );
       if (value == null || !context.mounted) return;
-      await _settingsSetDevServerSchoolName(value);
+      await onSave(value);
       if (!context.mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(l.settingsDevModeSaved),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      context.showUntisSnackBar(l.settingsDevModeSaved);
     } finally {
       controller.dispose();
     }
   }
 
-  Future<void> _editDevServerUsername(BuildContext context) async {
+  Future<void> _editDevServerSchoolName(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
-    final controller = TextEditingController(
-      text: devServerUsernameNotifier.value,
+    return _promptDevServerInputDialog(
+      context: context,
+      title: l.settingsDevModeSchoolName,
+      hintText: l.settingsDevModeSchoolNameDesc,
+      initialValue: devServerSchoolNameNotifier.value,
+      onSave: _settingsSetDevServerSchoolName,
     );
-    try {
-      final value = await showUntisDialog<String>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(l.settingsDevModeUsername),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            style: GoogleFonts.outfit(fontSize: 14),
-            decoration: InputDecoration(
-              hintText: l.settingsDevModeUsernameDesc,
-              filled: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            onSubmitted: (v) => Navigator.pop(dialogContext, v),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(l.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, controller.text),
-              child: Text(l.save),
-            ),
-          ],
-        ),
-      );
-      if (value == null || !context.mounted) return;
-      await _settingsSetDevServerUsername(value);
-      if (!context.mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(l.settingsDevModeSaved),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      controller.dispose();
-    }
   }
 
-  Future<void> _editDevServerPassword(BuildContext context) async {
+  Future<void> _editDevServerUsername(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
-    final controller = TextEditingController(
-      text: devServerPasswordNotifier.value,
+    return _promptDevServerInputDialog(
+      context: context,
+      title: l.settingsDevModeUsername,
+      hintText: l.settingsDevModeUsernameDesc,
+      initialValue: devServerUsernameNotifier.value,
+      onSave: _settingsSetDevServerUsername,
     );
-    try {
-      final value = await showUntisDialog<String>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(l.settingsDevModePassword),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            obscureText: true,
-            style: GoogleFonts.outfit(fontSize: 14),
-            decoration: InputDecoration(
-              hintText: l.settingsDevModePasswordDesc,
-              filled: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            onSubmitted: (v) => Navigator.pop(dialogContext, v),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(l.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, controller.text),
-              child: Text(l.save),
-            ),
-          ],
-        ),
-      );
-      if (value == null || !context.mounted) return;
-      await _settingsSetDevServerPassword(value);
-      if (!context.mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(l.settingsDevModeSaved),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      controller.dispose();
-    }
+  }
+
+  Future<void> _editDevServerPassword(BuildContext context) {
+    final l = appL10nFor(appLocaleNotifier.value);
+    return _promptDevServerInputDialog(
+      context: context,
+      title: l.settingsDevModePassword,
+      hintText: l.settingsDevModePasswordDesc,
+      initialValue: devServerPasswordNotifier.value,
+      obscureText: true,
+      onSave: _settingsSetDevServerPassword,
+    );
   }
 
   Future<void> _selectDevModeNotificationStyle(BuildContext context) async {

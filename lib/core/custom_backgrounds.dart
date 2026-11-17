@@ -1154,36 +1154,6 @@ String exportCustomBackgroundLibraryPretty(List<CustomBackgroundSpec> specs) {
   ).convert(specs.map((s) => s.toJson()).toList(growable: false));
 }
 
-String _stripMarkdownCodeFences(String input) {
-  var out = input;
-  // Remove ```json ... ``` and ``` ... ```.
-  out = out.replaceAll(RegExp(r'```(?:json)?', caseSensitive: false), '');
-  out = out.replaceAll('```', '');
-  return out.trim();
-}
-
-String _extractFirstJsonBlock(String input) {
-  final s = _stripMarkdownCodeFences(input);
-  final arrayStart = s.indexOf('[');
-  final objStart = s.indexOf('{');
-
-  if (arrayStart != -1 && (objStart == -1 || arrayStart < objStart)) {
-    final end = s.lastIndexOf(']');
-    if (end != -1 && end > arrayStart) {
-      return s.substring(arrayStart, end + 1).trim();
-    }
-  }
-
-  if (objStart != -1) {
-    final end = s.lastIndexOf('}');
-    if (end != -1 && end > objStart) {
-      return s.substring(objStart, end + 1).trim();
-    }
-  }
-
-  return s;
-}
-
 CustomBackgroundSpec _withUniqueId(
   CustomBackgroundSpec spec,
   Set<String> existingIds,
@@ -1214,7 +1184,7 @@ CustomBackgroundSpec _withUniqueId(
 }
 
 List<CustomBackgroundSpec> parseCustomBackgroundSpecsFromJsonText(String text) {
-  final jsonText = _extractFirstJsonBlock(text);
+  final jsonText = extractFirstJsonBlock(text);
   final decoded = jsonDecode(jsonText);
   if (decoded is Map) {
     return [CustomBackgroundSpec.fromJson(Map<String, dynamic>.from(decoded))];

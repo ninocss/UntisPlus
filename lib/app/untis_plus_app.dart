@@ -286,211 +286,152 @@ class UntisPlusApp extends StatelessWidget {
     );
   }
 
+  static final Listenable _appConfigListenable = Listenable.merge([
+    visualThemeNotifier,
+    appLocaleNotifier,
+    themeModeNotifier,
+    useMaterialYouNotifier,
+    isAmoledNotifier,
+    blurEnabledNotifier,
+    customColorSeedNotifier,
+    glowEffectsEnabledNotifier,
+  ]);
+
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<AppThemeId>(
-      valueListenable: visualThemeNotifier,
-      builder: (context, visualTheme, _) {
-        return ValueListenableBuilder<String>(
-          valueListenable: appLocaleNotifier,
-          builder: (context, locale, _) {
-            return ValueListenableBuilder<ThemeMode>(
-              valueListenable: themeModeNotifier,
-              builder: (context, themeMode, _) {
-                return ValueListenableBuilder<bool>(
-                  valueListenable: useMaterialYouNotifier,
-                  builder: (context, useMaterialYou, _) {
-                    return ValueListenableBuilder<bool>(
-                      valueListenable: isAmoledNotifier,
-                      builder: (context, isAmoled, _) {
-                        return ValueListenableBuilder<bool>(
-                          valueListenable: blurEnabledNotifier,
-                          builder: (context, blurEnabled, _) {
-                            return ValueListenableBuilder<int>(
-                              valueListenable: customColorSeedNotifier,
-                              builder: (context, seed, _) {
-                                return DynamicColorBuilder(
-                                  builder: (lightDynamic, darkDynamic) {
-                                    final canUseDynamic =
-                                        visualTheme == AppThemeId.defaultTheme;
-                                    final ColorScheme lightScheme;
-                                    if (canUseDynamic &&
-                                        useMaterialYou &&
-                                        lightDynamic != null) {
-                                      lightScheme = ColorScheme.fromSeed(
-                                        seedColor: lightDynamic.primary,
-                                        brightness: Brightness.light,
-                                        dynamicSchemeVariant:
-                                            DynamicSchemeVariant.vibrant,
-                                      );
-                                    } else if (canUseDynamic &&
-                                        useMaterialYou &&
-                                        darkDynamic != null) {
-                                      lightScheme = ColorScheme.fromSeed(
-                                        seedColor: darkDynamic.primary,
-                                        brightness: Brightness.light,
-                                        dynamicSchemeVariant:
-                                            DynamicSchemeVariant.vibrant,
-                                      );
-                                    } else {
-                                      lightScheme = untisThemeScheme(
-                                        visualTheme,
-                                        Brightness.light,
-                                        seed,
-                                      );
-                                    }
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        return ListenableBuilder(
+          listenable: _appConfigListenable,
+          builder: (context, _) {
+            final visualTheme = visualThemeNotifier.value;
+            final locale = appLocaleNotifier.value;
+            final themeMode = themeModeNotifier.value;
+            final useMaterialYou = useMaterialYouNotifier.value;
+            final isAmoled = isAmoledNotifier.value;
+            final blurEnabled = blurEnabledNotifier.value;
+            final seed = customColorSeedNotifier.value;
+            final glowEnabled = glowEffectsEnabledNotifier.value;
+            final canUseDynamic = visualTheme == AppThemeId.defaultTheme;
+            final ColorScheme lightScheme;
+            if (canUseDynamic && useMaterialYou && lightDynamic != null) {
+              lightScheme = ColorScheme.fromSeed(
+                seedColor: lightDynamic.primary,
+                brightness: Brightness.light,
+                dynamicSchemeVariant: DynamicSchemeVariant.vibrant,
+              );
+            } else if (canUseDynamic && useMaterialYou && darkDynamic != null) {
+              lightScheme = ColorScheme.fromSeed(
+                seedColor: darkDynamic.primary,
+                brightness: Brightness.light,
+                dynamicSchemeVariant: DynamicSchemeVariant.vibrant,
+              );
+            } else {
+              lightScheme = untisThemeScheme(
+                visualTheme,
+                Brightness.light,
+                seed,
+              );
+            }
 
-                                    ColorScheme darkScheme;
-                                    if (canUseDynamic &&
-                                        useMaterialYou &&
-                                        darkDynamic != null) {
-                                      darkScheme = ColorScheme.fromSeed(
-                                        seedColor: darkDynamic.primary,
-                                        brightness: Brightness.dark,
-                                        dynamicSchemeVariant:
-                                            DynamicSchemeVariant.vibrant,
-                                      );
-                                    } else if (canUseDynamic &&
-                                        useMaterialYou &&
-                                        lightDynamic != null) {
-                                      darkScheme = ColorScheme.fromSeed(
-                                        seedColor: lightDynamic.primary,
-                                        brightness: Brightness.dark,
-                                        dynamicSchemeVariant:
-                                            DynamicSchemeVariant.vibrant,
-                                      );
-                                    } else {
-                                      darkScheme = untisThemeScheme(
-                                        visualTheme,
-                                        Brightness.dark,
-                                        seed,
-                                      );
-                                    }
+            ColorScheme darkScheme;
+            if (canUseDynamic && useMaterialYou && darkDynamic != null) {
+              darkScheme = ColorScheme.fromSeed(
+                seedColor: darkDynamic.primary,
+                brightness: Brightness.dark,
+                dynamicSchemeVariant: DynamicSchemeVariant.vibrant,
+              );
+            } else if (canUseDynamic &&
+                useMaterialYou &&
+                lightDynamic != null) {
+              darkScheme = ColorScheme.fromSeed(
+                seedColor: lightDynamic.primary,
+                brightness: Brightness.dark,
+                dynamicSchemeVariant: DynamicSchemeVariant.vibrant,
+              );
+            } else {
+              darkScheme = untisThemeScheme(visualTheme, Brightness.dark, seed);
+            }
 
-                                    if (isAmoled &&
-                                        visualTheme ==
-                                            AppThemeId.defaultTheme) {
-                                      darkScheme = darkScheme.copyWith(
-                                        surface: Colors.black,
-                                        surfaceContainerLowest: Colors.black,
-                                        surfaceContainerLow: Color.alphaBlend(
-                                          darkScheme.primary.withValues(
-                                            alpha: 0.08,
-                                          ),
-                                          const Color(0xFF0A0A0A),
-                                        ),
-                                        surfaceContainer: Color.alphaBlend(
-                                          darkScheme.primary.withValues(
-                                            alpha: 0.12,
-                                          ),
-                                          const Color(0xFF111111),
-                                        ),
-                                        surfaceContainerHigh: Color.alphaBlend(
-                                          darkScheme.primary.withValues(
-                                            alpha: 0.16,
-                                          ),
-                                          const Color(0xFF1A1A1A),
-                                        ),
-                                        surfaceContainerHighest:
-                                            Color.alphaBlend(
-                                              darkScheme.primary.withValues(
-                                                alpha: 0.20,
-                                              ),
-                                              const Color(0xFF222222),
-                                            ),
-                                      );
-                                    }
+            if (isAmoled && visualTheme == AppThemeId.defaultTheme) {
+              darkScheme = darkScheme.copyWith(
+                surface: Colors.black,
+                surfaceContainerLowest: Colors.black,
+                surfaceContainerLow: Color.alphaBlend(
+                  darkScheme.primary.withValues(alpha: 0.08),
+                  const Color(0xFF0A0A0A),
+                ),
+                surfaceContainer: Color.alphaBlend(
+                  darkScheme.primary.withValues(alpha: 0.12),
+                  const Color(0xFF111111),
+                ),
+                surfaceContainerHigh: Color.alphaBlend(
+                  darkScheme.primary.withValues(alpha: 0.16),
+                  const Color(0xFF1A1A1A),
+                ),
+                surfaceContainerHighest: Color.alphaBlend(
+                  darkScheme.primary.withValues(alpha: 0.20),
+                  const Color(0xFF222222),
+                ),
+              );
+            }
 
-                                    final l = appL10nFor(locale);
+            final l = appL10nFor(locale);
 
-                                    return ValueListenableBuilder<bool>(
-                                      valueListenable:
-                                          glowEffectsEnabledNotifier,
-                                      builder: (context, glowEnabled, _) {
-                                        return MaterialApp(
-                                          debugShowCheckedModeBanner: false,
-                                          title: l.appName,
-                                          locale: Locale(locale),
-                                          localizationsDelegates: [
-                                            ...AppL10n.localizationsDelegates,
-                                            ...WishKitLocalizations.localizationsDelegates,
-                                            GlobalMaterialLocalizations.delegate,
-                                          ],
-                                          supportedLocales:
-                                              WishKitLocalizations.supportedLocales,
-                                          scrollBehavior:
-                                              const _UntisScrollBehavior(),
-                                          theme: _themeFrom(
-                                            lightScheme,
-                                            isAmoled,
-                                            blurEnabled,
-                                            glowEnabled,
-                                            visualTheme,
-                                          ),
-                                          darkTheme: _themeFrom(
-                                            darkScheme,
-                                            isAmoled,
-                                            blurEnabled,
-                                            glowEnabled,
-                                            visualTheme,
-                                          ),
-                                          themeMode: themeMode,
-                                          themeAnimationDuration: Duration.zero,
-                                          builder: (context, child) {
-                                            final isDark =
-                                                Theme.of(context).brightness ==
-                                                Brightness.dark;
-                                            final overlayStyle =
-                                                SystemUiOverlayStyle(
-                                                  statusBarColor:
-                                                      Colors.transparent,
-                                                  statusBarIconBrightness:
-                                                      isDark
-                                                      ? Brightness.light
-                                                      : Brightness.dark,
-                                                  statusBarBrightness: isDark
-                                                      ? Brightness.dark
-                                                      : Brightness.light,
-                                                  systemNavigationBarColor:
-                                                      Colors.transparent,
-                                                  systemNavigationBarIconBrightness:
-                                                      isDark
-                                                      ? Brightness.light
-                                                      : Brightness.dark,
-                                                );
-                                            return AnnotatedRegion<
-                                              SystemUiOverlayStyle
-                                            >(
-                                              value: overlayStyle,
-                                              child:
-                                                  child ??
-                                                  const SizedBox.shrink(),
-                                            );
-                                          },
-                                          home: ChangeNotifierProvider<WishModel>(
-                                            create: (_) => WishKit.createProvider(),
-                                            child: Stack(
-                                              fit: StackFit.expand,
-                                              children: [
-                                                startScreen,
-                                                const _FocusBlurWarmup(),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    );
-                                  },
-                                );
-                              },
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              title: l.appName,
+              locale: Locale(locale),
+              localizationsDelegates: [
+                ...AppL10n.localizationsDelegates,
+                ...WishKitLocalizations.localizationsDelegates,
+                GlobalMaterialLocalizations.delegate,
+              ],
+              supportedLocales: WishKitLocalizations.supportedLocales,
+              scrollBehavior: const _UntisScrollBehavior(),
+              theme: _themeFrom(
+                lightScheme,
+                isAmoled,
+                blurEnabled,
+                glowEnabled,
+                visualTheme,
+              ),
+              darkTheme: _themeFrom(
+                darkScheme,
+                isAmoled,
+                blurEnabled,
+                glowEnabled,
+                visualTheme,
+              ),
+              themeMode: themeMode,
+              themeAnimationDuration: Duration.zero,
+              builder: (context, child) {
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                final overlayStyle = SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: isDark
+                      ? Brightness.light
+                      : Brightness.dark,
+                  statusBarBrightness: isDark
+                      ? Brightness.dark
+                      : Brightness.light,
+                  systemNavigationBarColor: Colors.transparent,
+                  systemNavigationBarIconBrightness: isDark
+                      ? Brightness.light
+                      : Brightness.dark,
+                );
+                return AnnotatedRegion<SystemUiOverlayStyle>(
+                  value: overlayStyle,
+                  child: child ?? const SizedBox.shrink(),
                 );
               },
+              home: ChangeNotifierProvider<WishModel>(
+                create: (_) => WishKit.createProvider(),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [startScreen, const _FocusBlurWarmup()],
+                ),
+              ),
             );
           },
         );

@@ -42,16 +42,17 @@ class CredentialVault {
       );
     }
     try {
+      // The three keystore reads are independent platform-channel calls, so
+      // issue them together instead of paying their latency one after another.
+      final values = await Future.wait<String?>([
+        _storage.read(key: _accountKey(accountId, 'password')),
+        _storage.read(key: _accountKey(accountId, 'credentialMode')),
+        _storage.read(key: _accountKey(accountId, 'sessionId')),
+      ]);
       return AccountCredentials(
-        password:
-            await _storage.read(key: _accountKey(accountId, 'password')) ?? '',
-        credentialMode:
-            await _storage.read(
-              key: _accountKey(accountId, 'credentialMode'),
-            ) ??
-            'password',
-        sessionId:
-            await _storage.read(key: _accountKey(accountId, 'sessionId')) ?? '',
+        password: values[0] ?? '',
+        credentialMode: values[1] ?? 'password',
+        sessionId: values[2] ?? '',
       );
     } catch (_) {
       return const AccountCredentials(
@@ -88,11 +89,18 @@ class CredentialVault {
     required AccountCredentials credentials,
   }) async {
     try {
-      await writeAccount(accountId: accountId, credentials: credentials);
-      final stored = await readAccount(accountId);
-      return stored.password == credentials.password &&
+      bool matches(AccountCredentials stored) =>
+          stored.password == credentials.password &&
           stored.credentialMode == credentials.credentialMode &&
           stored.sessionId == credentials.sessionId;
+
+      // Startup re-saves the active account on every launch. When the keystore
+      // already holds exactly these values the (slow) write is unnecessary.
+      if (accountId.isNotEmpty && matches(await readAccount(accountId))) {
+        return true;
+      }
+      await writeAccount(accountId: accountId, credentials: credentials);
+      return matches(await readAccount(accountId));
     } catch (_) {
       return false;
     }
@@ -135,21 +143,23 @@ class CredentialVault {
       'mistral': 'mistralApiKey',
       'custom': 'customAiApiKey',
     };
-    final result = <String, String>{};
-    for (final entry in legacyKeys.entries) {
-      var value = await readAiApiKey(entry.key);
-      final legacy = prefs.getString(entry.value) ?? '';
-      if (value.isEmpty && legacy.isNotEmpty) {
-        try {
-          await writeAiApiKey(entry.key, legacy);
-          value = await readAiApiKey(entry.key);
-          if (value == legacy) await prefs.remove(entry.value);
-        } catch (_) {
-          value = legacy;
+    // Providers are independent of each other, so load/migrate them together.
+    final loaded = await Future.wait(
+      legacyKeys.entries.map((entry) async {
+        var value = await readAiApiKey(entry.key);
+        final legacy = prefs.getString(entry.value) ?? '';
+        if (value.isEmpty && legacy.isNotEmpty) {
+          try {
+            await writeAiApiKey(entry.key, legacy);
+            value = await readAiApiKey(entry.key);
+            if (value == legacy) await prefs.remove(entry.value);
+          } catch (_) {
+            value = legacy;
+          }
         }
-      }
-      result[entry.key] = value;
-    }
-    return result;
+        return MapEntry(entry.key, value);
+      }),
+    );
+    return {for (final entry in loaded) entry.key: entry.value};
   }
 }

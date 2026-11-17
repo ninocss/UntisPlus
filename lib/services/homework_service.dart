@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/sync_state.dart';
+import '../core/time_utils.dart';
 import '../data/cache/offline_cache_store.dart';
 import '../data/webuntis/webuntis_capabilities.dart';
 import '../data/webuntis/webuntis_client.dart';
@@ -42,13 +43,13 @@ class HomeworkService {
           _client.rpc(
             context: value,
             method: 'getHomeWork2017',
-            requestId: 'homework_${_dateInt(start)}_${_dateInt(end)}',
+            requestId: 'homework_${untisDateInt(start)}_${untisDateInt(end)}',
             params: [
               {
                 'id': personId,
                 'type': personType == 5 ? 'STUDENT' : 'TEACHER',
-                'startDate': _dateInt(start),
-                'endDate': _dateInt(end),
+                'startDate': untisDateInt(start),
+                'endDate': untisDateInt(end),
               },
             ],
           );
@@ -195,7 +196,7 @@ class HomeworkService {
       _store.scopedKey(
         accountId: accountId,
         dataset: 'homework',
-        entityKey: '${_dateInt(start)}-${_dateInt(end)}',
+        entityKey: '${untisDateInt(start)}-${untisDateInt(end)}',
       );
 
   static String _completionKey(String accountId) => _store.scopedKey(
@@ -203,9 +204,6 @@ class HomeworkService {
     dataset: 'homeworkLocal',
     entityKey: 'completed',
   );
-
-  static int _dateInt(DateTime value) =>
-      value.year * 10000 + value.month * 100 + value.day;
 
   static Future<void> _recordCapabilitySuccess(
     String accountId,

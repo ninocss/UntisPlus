@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../../../core/defensive_parsers.dart';
+
 /// A file that is available only while an assistant request is pending.
 class AiChatAttachment {
   const AiChatAttachment({
@@ -369,14 +371,8 @@ class OpenAICompatibleProvider extends RemoteAIProvider {
 }
 
 Map<String, dynamic>? _tryDecodeObject(String value) {
-  try {
-    final decoded = jsonDecode(value);
-    return decoded is Map
-        ? Map<String, dynamic>.from(decoded.cast<String, dynamic>())
-        : null;
-  } catch (_) {
-    return null;
-  }
+  final map = decodeJsonMap(value);
+  return map.isEmpty ? null : map;
 }
 
 String normalizedAiBaseUrl(String value) {

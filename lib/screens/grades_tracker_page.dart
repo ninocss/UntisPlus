@@ -179,395 +179,264 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
               : cs.primary;
           final subjects = _visibleKnownSubjects();
 
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom,
-            ),
-            child: _sheetSurface(
-              context: ctx,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(28),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          return UntisSheetScaffold(
+            handleWidth: 42,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Center(
-                      child: Container(
-                        width: 42,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: cs.onSurface.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                existing == null
-                                    ? l.gradesAddTitle
-                                    : l.gradesEditTitle,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              Text(
-                                l.gradesAddDesc,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: cs.onSurfaceVariant.withValues(
-                                    alpha: 0.7,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (previewValue != null)
-                          _springEntry(
-                            key: ValueKey(previewValue),
-                            child: Container(
-                              width: 54,
-                              height: 54,
-                              decoration: BoxDecoration(
-                                color: previewColor.withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: previewColor.withValues(alpha: 0.4),
-                                  width: 2,
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  previewValue.toString().replaceAll('.0', ''),
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 22,
-                                    color: previewColor,
-                                  ),
-                                ),
-                              ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            existing == null
+                                ? l.gradesAddTitle
+                                : l.gradesEditTitle,
+                            style: GoogleFonts.outfit(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
                             ),
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    Text(
-                      l.gradesSubjectLabel.toUpperCase(),
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: cs.primary,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (subjects.isNotEmpty)
-                      _m3SelectionMenu(
-                        context: ctx,
-                        value: selectedSubject,
-                        entries: subjects,
-                        icon: Icons.book_rounded,
-                        onSelected: (value) => setDlg(() {
-                          selectedSubject = value;
-                          subjectController.text = selectedSubject;
-                        }),
-                      )
-                    else
-                      TextField(
-                        controller: subjectController,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.book_rounded),
-                          hintText: l.gradesSubjectLabel,
-                          filled: true,
-                          fillColor: cs.surfaceContainerHighest.withValues(
-                            alpha: 0.4,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                l.gradesGradeLabel.toUpperCase(),
-                                style: GoogleFonts.outfit(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: cs.primary,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: valueController,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                                onChanged: (_) => setDlg(() {}),
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 18,
-                                ),
-                                decoration: InputDecoration(
-                                  prefixIcon: const Icon(Icons.star_rounded),
-                                  filled: true,
-                                  fillColor: cs.surfaceContainerHighest
-                                      .withValues(alpha: 0.4),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                l.gradesWeightLabel.toUpperCase(),
-                                style: GoogleFonts.outfit(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: cs.primary,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: weightController,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 18,
-                                ),
-                                decoration: InputDecoration(
-                                  prefixIcon: const Icon(Icons.scale_rounded),
-                                  filled: true,
-                                  fillColor: cs.surfaceContainerHighest
-                                      .withValues(alpha: 0.4),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      l.gradesTypeLabel.toUpperCase(),
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: cs.primary,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: typeController,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.label_important_rounded),
-                        hintText: l.examsTypeLabel,
-                        filled: true,
-                        fillColor: cs.surfaceContainerHighest.withValues(
-                          alpha: 0.4,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      l.gradesDateLabel.toUpperCase(),
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: cs.primary,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    InkWell(
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: ctx,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (picked != null) setDlg(() => selectedDate = picked);
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest.withValues(
-                            alpha: 0.4,
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.calendar_today_rounded, size: 20),
-                            const SizedBox(width: 12),
-                            Text(
-                              DateFormat(
-                                'dd. MMMM yyyy',
-                                _icuLocale(appLocaleNotifier.value),
-                              ).format(selectedDate),
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                    Row(
-                      children: [
-                        if (existing != null)
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                setState(
-                                  () => _grades.removeWhere(
-                                    (g) => g.id == existing.id,
-                                  ),
-                                );
-                                _saveGrades();
-                                Navigator.pop(ctx);
-                              },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: cs.error,
-                                side: BorderSide(
-                                  color: cs.error.withValues(alpha: 0.5),
-                                  width: 1.5,
-                                ),
-                                minimumSize: const Size(0, 60),
-                                shape: _legacyButtonShape(context, 20),
-                              ),
-                              child: const Icon(Icons.delete_outline_rounded),
+                          Text(
+                            l.gradesAddDesc,
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                             ),
                           ),
-                        if (existing != null) const SizedBox(width: 12),
-                        Expanded(
-                          flex: 3,
-                          child: FilledButton(
-                            onPressed: () {
-                              final val =
-                                  double.tryParse(
-                                    valueController.text.replaceAll(',', '.'),
-                                  ) ??
-                                  0;
-                              final weight =
-                                  double.tryParse(
-                                    weightController.text.replaceAll(',', '.'),
-                                  ) ??
-                                  1.0;
-                              final subj = subjectController.text.trim();
-                              if (!val.isFinite ||
-                                  val <= 0 ||
-                                  !weight.isFinite ||
-                                  weight <= 0 ||
-                                  subj.isEmpty) {
-                                return;
-                              }
-
-                              final newGrade = _Grade(
-                                id:
-                                    existing?.id ??
-                                    DateTime.now().millisecondsSinceEpoch
-                                        .toString(),
-                                subject: subj,
-                                value: val,
-                                weight: weight,
-                                type: typeController.text,
-                                date: selectedDate,
-                              );
-
-                              setState(() {
-                                if (existing != null) {
-                                  final idx = _grades.indexWhere(
-                                    (g) => g.id == existing.id,
-                                  );
-                                  if (idx >= 0) {
-                                    _grades[idx] = newGrade;
-                                  } else {
-                                    _grades.add(newGrade);
-                                  }
-                                } else {
-                                  _grades.add(newGrade);
-                                }
-                              });
-                              _saveGrades();
-                              Navigator.pop(ctx);
-                            },
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size(0, 60),
-                              shape: _legacyButtonShape(context, 20),
-                              elevation:
-                                  untisThemeTokensOf(context).glowEffectsEnabled
-                                  ? 8
-                                  : 0,
-                              shadowColor:
-                                  untisThemeTokensOf(context).glowEffectsEnabled
-                                  ? cs.primary.withValues(alpha: 0.4)
-                                  : Colors.transparent,
+                        ],
+                      ),
+                    ),
+                    if (previewValue != null)
+                      _springEntry(
+                        key: ValueKey(previewValue),
+                        child: Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(
+                            color: previewColor.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: previewColor.withValues(alpha: 0.4),
+                              width: 2,
                             ),
+                          ),
+                          child: Center(
                             child: Text(
-                              existing == null ? l.save : l.commonSaveChanges,
+                              previewValue.toString().replaceAll('.0', ''),
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.w900,
-                                fontSize: 16,
+                                fontSize: 22,
+                                color: previewColor,
                               ),
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                      ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 32),
+                _sheetSectionLabel(ctx, l.gradesSubjectLabel),
+                const SizedBox(height: 12),
+                _untisSheetSubjectSelector(
+                  context: ctx,
+                  subjects: subjects,
+                  selectedSubject: selectedSubject,
+                  onSelected: (value) => setDlg(() {
+                    selectedSubject = value;
+                    subjectController.text = selectedSubject;
+                  }),
+                  fallbackController: subjectController,
+                  fallbackHint: l.gradesSubjectLabel,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _sheetSectionLabel(ctx, l.gradesGradeLabel),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: valueController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            onChanged: (_) => setDlg(() {}),
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                            ),
+                            decoration: _untisSheetInputDecoration(
+                              ctx,
+                              prefixIcon: Icons.star_rounded,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _sheetSectionLabel(ctx, l.gradesWeightLabel),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: weightController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                            ),
+                            decoration: _untisSheetInputDecoration(
+                              ctx,
+                              prefixIcon: Icons.scale_rounded,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                _sheetSectionLabel(ctx, l.gradesTypeLabel),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: typeController,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                  decoration: _untisSheetInputDecoration(
+                    ctx,
+                    prefixIcon: Icons.label_important_rounded,
+                    hintText: l.examsTypeLabel,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _sheetSectionLabel(ctx, l.gradesDateLabel),
+                const SizedBox(height: 12),
+                _untisSheetDatePickerField(
+                  context: ctx,
+                  selectedDate: selectedDate,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2030),
+                  onDateSelected: (picked) =>
+                      setDlg(() => selectedDate = picked),
+                ),
+                const SizedBox(height: 40),
+                Row(
+                  children: [
+                    if (existing != null)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(
+                              () => _grades.removeWhere(
+                                (g) => g.id == existing.id,
+                              ),
+                            );
+                            _saveGrades();
+                            Navigator.pop(ctx);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: cs.error,
+                            side: BorderSide(
+                              color: cs.error.withValues(alpha: 0.5),
+                              width: 1.5,
+                            ),
+                            minimumSize: const Size(0, 60),
+                            shape: _legacyButtonShape(context, 20),
+                          ),
+                          child: const Icon(Icons.delete_outline_rounded),
+                        ),
+                      ),
+                    if (existing != null) const SizedBox(width: 12),
+                    Expanded(
+                      flex: 3,
+                      child: FilledButton(
+                        onPressed: () {
+                          final val =
+                              double.tryParse(
+                                valueController.text.replaceAll(',', '.'),
+                              ) ??
+                              0;
+                          final weight =
+                              double.tryParse(
+                                weightController.text.replaceAll(',', '.'),
+                              ) ??
+                              1.0;
+                          final subj = subjectController.text.trim();
+                          if (!val.isFinite ||
+                              val <= 0 ||
+                              !weight.isFinite ||
+                              weight <= 0 ||
+                              subj.isEmpty) {
+                            return;
+                          }
+
+                          final newGrade = _Grade(
+                            id:
+                                existing?.id ??
+                                DateTime.now().millisecondsSinceEpoch
+                                    .toString(),
+                            subject: subj,
+                            value: val,
+                            weight: weight,
+                            type: typeController.text,
+                            date: selectedDate,
+                          );
+
+                          setState(() {
+                            if (existing != null) {
+                              final idx = _grades.indexWhere(
+                                (g) => g.id == existing.id,
+                              );
+                              if (idx >= 0) {
+                                _grades[idx] = newGrade;
+                              } else {
+                                _grades.add(newGrade);
+                              }
+                            } else {
+                              _grades.add(newGrade);
+                            }
+                          });
+                          _saveGrades();
+                          Navigator.pop(ctx);
+                        },
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 60),
+                          shape: _legacyButtonShape(context, 20),
+                          elevation:
+                              untisThemeTokensOf(context).glowEffectsEnabled
+                              ? 8
+                              : 0,
+                          shadowColor:
+                              untisThemeTokensOf(context).glowEffectsEnabled
+                              ? cs.primary.withValues(alpha: 0.4)
+                              : Colors.transparent,
+                        ),
+                        child: Text(
+                          existing == null ? l.save : l.commonSaveChanges,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
             ),
           );
         },
@@ -625,301 +494,94 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     return _loading
         ? const Center(child: CircularProgressIndicator())
         : visibleGradeCount == 0
-        ? _buildEmptyState(cs, l)
-        : ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 132),
-            children: [
-              _buildGradesSummaryCard(cs, l),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                child: Row(
-                  children: [
-                    // Stats
-                    _buildStatBadge(
-                      cs,
-                      l.gradesAverage,
-                      _overallAverage.toStringAsFixed(2),
-                      Icons.analytics_rounded,
-                      _colorForGrade(_overallAverage),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildStatBadge(
-                      cs,
-                      l.gradesTotal,
-                      visibleGradeCount.toString(),
-                      Icons.numbers_rounded,
-                      cs.primary,
-                    ),
-
-                    // Best Subject (if any)
-                    ...(() {
-                      final grouped = _groupedGrades;
-                      if (grouped.length < 2) return <Widget>[];
-                      String bestSubject = "";
-                      double bestAvg = 99;
-                      grouped.forEach((s, g) {
-                        final a = _calculateAverage(g);
-                        if (a < bestAvg) {
-                          bestAvg = a;
-                          bestSubject = s;
-                        }
-                      });
-                      if (bestSubject.isEmpty) return <Widget>[];
-                      return [
-                        const SizedBox(width: 8),
-                        _buildStatBadge(
-                          cs,
-                          l.gradesBestSubject,
-                          bestSubject,
-                          Icons.workspace_premium_rounded,
-                          Colors.amber,
-                        ),
-                      ];
-                    })(),
-
-                    // Subject quick filters
-                    if (subjects.length > 2) ...[
-                      const SizedBox(width: 16),
-                      Container(
-                        width: 1,
-                        height: 16,
-                        color: cs.outlineVariant.withValues(alpha: 0.5),
-                      ),
-                      const SizedBox(width: 16),
-                      ...subjects.map((s) {
-                        final isDark =
-                            Theme.of(context).brightness == Brightness.dark;
-                        final color = _autoLessonColor(s, isDark);
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: _glassContainer(
-                            context: context,
-                            borderRadius: BorderRadius.circular(12),
-                            color: color.withValues(alpha: 0.1),
-                            border: Border.all(
-                              color: color.withValues(alpha: 0.2),
-                            ),
-                            child: InkWell(
-                              onTap: () => HapticFeedback.selectionClick(),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.book_rounded,
-                                      size: 13,
-                                      color: color,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      s,
-                                      style: GoogleFonts.outfit(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 11,
-                                        color: isDark
-                                            ? color.withValues(alpha: 0.9)
-                                            : color,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
-                  ],
+        ? _buildUnifiedEmptyState(
+            context: context,
+            icon: Icons.auto_graph_rounded,
+            title: l.gradesNone,
+            hint: l.gradesNoneHint,
+            action: FilledButton.icon(
+              onPressed: () {
+                AppHaptics.selection();
+                showAddGradeDialog();
+              },
+              icon: const Icon(Icons.add_rounded),
+              label: Text(
+                l.gradesAddTitle,
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
                 ),
               ),
-              const SizedBox(height: 16),
-              ...subjects.asMap().entries.map((entry) {
-                final index = entry.key;
-                final subj = entry.value;
-                final subjGrades = grouped[subj]!
-                  ..sort((a, b) => b.date.compareTo(a.date));
-                final avg = _calculateAverage(subjGrades);
-                return _springEntry(
-                  key: ValueKey('grade_subject_$subj'),
-                  duration: Duration(milliseconds: 400 + (index * 80)),
-                  offsetY: 20,
-                  child: _buildSubjectCard(cs, subj, subjGrades, avg),
-                );
-              }),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: _legacyButtonShape(context, 20),
+              ),
+            ),
+          )
+        : ListView(
+            padding: UntisLayout.pagePadding(
+              context,
+              bottom: 132,
+            ).copyWith(top: MediaQuery.paddingOf(context).top + 16),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            children: [
+              _sectionHeader(
+                context,
+                l.gradesAverage,
+                Icons.auto_graph_rounded,
+                count: visibleGradeCount,
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _colorForGrade(_overallAverage).withValues(
+                      alpha: 0.16,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _colorForGrade(_overallAverage).withValues(
+                        alpha: 0.35,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    _overallAverage.toStringAsFixed(2),
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: _colorForGrade(_overallAverage),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildAdaptiveCardGrid(
+                context,
+                subjects.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final subj = entry.value;
+                  final subjGrades = grouped[subj]!
+                    ..sort((a, b) => b.date.compareTo(a.date));
+                  final avg = _calculateAverage(subjGrades);
+                  return _springEntry(
+                    key: ValueKey('grade_subject_$subj'),
+                    duration: Duration(
+                      milliseconds: (400 + index * 45).clamp(400, 600).toInt(),
+                    ),
+                    offsetY: 20,
+                    child: _buildSubjectCard(cs, subj, subjGrades, avg),
+                  );
+                }).toList(),
+              ),
             ],
           );
-  }
-
-  Widget _buildGradesSummaryCard(ColorScheme cs, AppL10n l) {
-    final averageColor = _colorForGrade(_overallAverage);
-    return FeatureSummaryCard(
-      icon: Icons.auto_graph_rounded,
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l.gradesAverage,
-            style: GoogleFonts.outfit(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            _overallAverage.toStringAsFixed(2),
-            style: GoogleFonts.outfit(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: averageColor,
-              letterSpacing: -0.4,
-            ),
-          ),
-        ],
-      ),
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: cs.primary.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
-        ),
-        child: Text(
-          '${_grades.length} ${l.gradesTotal}',
-          style: GoogleFonts.outfit(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: cs.primary,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatBadge(
-    ColorScheme cs,
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return _glassContainer(
-      context: context,
-      borderRadius: BorderRadius.circular(14),
-      color: cs.surfaceContainerLow.withValues(alpha: 0.5),
-      border: Border.all(
-        color: cs.outlineVariant.withValues(alpha: 0.25),
-        width: 1,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: color, size: 14),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              "$label: ",
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-            Text(
-              value,
-              style: GoogleFonts.outfit(
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-                color: cs.onSurface,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(ColorScheme cs, AppL10n l) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 60),
-          _glassContainer(
-            context: context,
-            borderRadius: BorderRadius.circular(32),
-            color: cs.primary.withValues(alpha: 0.12),
-            border: Border.all(
-              color: cs.primary.withValues(alpha: 0.3),
-              width: 1.5,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Icon(
-                Icons.auto_graph_rounded,
-                size: 64,
-                color: cs.primary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            l.gradesNone,
-            style: GoogleFonts.outfit(
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-              color: cs.onSurface,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            l.gradesNoneHint,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w500,
-              color: cs.onSurfaceVariant,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 32),
-          FilledButton.icon(
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              showAddGradeDialog();
-            },
-            icon: const Icon(Icons.add_rounded),
-            label: Text(
-              l.gradesAddTitle,
-              style: GoogleFonts.outfit(
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-              ),
-            ),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: _legacyButtonShape(context, 20),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildSubjectCard(
@@ -934,17 +596,17 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     final gradeColor = _colorForGrade(average);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 12),
       child: _glassContainer(
         context: context,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         color: cs.surfaceContainerLow.withValues(alpha: 0.5),
         border: Border.all(
           color: cs.outlineVariant.withValues(alpha: 0.3),
           width: 1.2,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(24),
           child: Column(
             children: [
               Container(
@@ -1080,13 +742,13 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                         () => _grades.removeWhere((item) => item.id == g.id),
                       );
                       _saveGrades();
-                      HapticFeedback.mediumImpact();
+                      AppHaptics.confirmation();
                     },
                     child: Material(
                       type: MaterialType.transparency,
                       child: ListTile(
                         onTap: () {
-                          HapticFeedback.selectionClick();
+                          AppHaptics.selection();
                           showAddGradeDialog(g);
                         },
                         contentPadding: const EdgeInsets.symmetric(

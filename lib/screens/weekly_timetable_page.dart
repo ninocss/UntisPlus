@@ -64,6 +64,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     with TickerProviderStateMixin {
   late TabController _tabController;
   Map<int, List<dynamic>> _weekData = {0: [], 1: [], 2: [], 3: [], 4: []};
+  DateTime? _displayedMonday;
   List<Map<String, dynamic>> _holidays = [];
   bool _loading = true;
   String? _loadError;
@@ -100,7 +101,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   bool _isWeekCarouselAnimating = false;
   bool _isDayCarouselAnimating = false;
   bool _suppressDayTabControllerRebuild = false;
-  late final AnimationController _cacheRefreshController;
   int _weekFetchGeneration = 0;
   bool _isExportingTimetable = false;
   final GlobalKey _timetableExportKey = GlobalKey();
@@ -128,7 +128,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     sessionId: _currentSessionId,
   );
 
-  static const double _ppm = 1.5;
+  double get _gridTextScale =>
+      math.max(1.0, MediaQuery.textScalerOf(context).scale(11) / 11);
+
+  double get _dayTabsHeight {
+    final scaler = MediaQuery.textScalerOf(context);
+    return math.max(
+      kTextTabBarHeight,
+      scaler.scale(13) * 1.1 + scaler.scale(11) * 1.2 + 10,
+    );
+  }
 
   List<String> get _dayShort =>
       appL10nFor(appLocaleNotifier.value).weekDayShort;
@@ -215,7 +224,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         if (s.isNotEmpty) allSubjects.add(s);
       }
     }
-    knownSubjectsNotifier.value = allSubjects;
+    knownSubjectsNotifier.value = Set<String>.from(knownSubjectsNotifier.value)..addAll(allSubjects);
   }
 
   Future<Map<int, List<dynamic>>?> _loadWeekFromCache({
@@ -240,18 +249,24 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         dataset: 'timetableWeek',
         entityKey: key,
       );
-      final stored = await OfflineCacheStore.instance.read(storeKey);
+      final stored = await OfflineCacheStore.instance
+          .read(storeKey)
+          .timeout(const Duration(milliseconds: 800), onTimeout: () => null);
       dynamic decoded = stored?.value;
       if (decoded == null) {
         final raw = prefs.getString(key);
         if (raw == null || raw.isEmpty) return null;
         decoded = jsonDecode(raw);
         if (decoded is Map) {
-          await OfflineCacheStore.instance.write(
-            storeKey,
-            Map<String, dynamic>.from(decoded),
-          );
-          await prefs.remove(key);
+          unawaited(() async {
+            try {
+              await OfflineCacheStore.instance.write(
+                storeKey,
+                Map<String, dynamic>.from(decoded),
+              );
+              await prefs.remove(key);
+            } catch (_) {}
+          }());
         }
       }
       if (decoded is! Map) return null;
@@ -323,27 +338,44 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         entityKey: key,
       );
       await OfflineCacheStore.instance.write(storeKey, payload);
+      // Remove a migrated legacy JSON cache only after the Hive write succeeds.
+      await prefs.remove(key);
       if (!demoModeNotifier.value &&
           requestPersonId == personId &&
           requestPersonType == personType) {
-        final wrapped = SchoolWrappedRepository();
-        for (final year in await wrapped.years(
-          activeUntisAccountId ?? 'legacy',
-        )) {
-          final weekStart = monday ?? _currentMonday;
-          if (year.contains(weekStart.add(const Duration(days: 4))) ||
-              year.contains(weekStart)) {
-            await wrapped.recordWeek(
-              accountId: activeUntisAccountId ?? 'legacy',
-              year: year,
-              monday: weekStart,
-              days: weekData,
-            );
-          }
+        // The recap statistics are bookkeeping; they must not hold up the
+        // caller (e.g. the adjacent-week prefetch loop).
+        final recordAccountId = activeUntisAccountId ?? 'legacy';
+        final weekStart = monday ?? _currentMonday;
+        unawaited(
+          _recordWeekForWrapped(
+            accountId: recordAccountId,
+            weekStart: weekStart,
+            weekData: weekData,
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _recordWeekForWrapped({
+    required String accountId,
+    required DateTime weekStart,
+    required Map<int, List<dynamic>> weekData,
+  }) async {
+    try {
+      final wrapped = SchoolWrappedRepository();
+      for (final year in await wrapped.years(accountId)) {
+        if (year.contains(weekStart.add(const Duration(days: 4))) ||
+            year.contains(weekStart)) {
+          await wrapped.recordWeek(
+            accountId: accountId,
+            year: year,
+            monday: weekStart,
+            days: weekData,
+          );
         }
       }
-      // Remove a migrated legacy JSON cache only after the Hive write succeeds.
-      await prefs.remove(key);
     } catch (_) {}
   }
 
@@ -527,6 +559,38 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     } catch (_) {}
   }
 
+  void _populateMasterDataFromPublicElements(List<dynamic> elements) {
+    for (final raw in elements) {
+      if (raw is! Map) continue;
+      final type = asIntOrNull(raw['type']);
+      final id = asIntOrNull(raw['id']);
+      if (type == null || id == null) continue;
+      final name = (raw['name'] ?? raw['shortName'] ?? '').toString().trim();
+      final longName = (raw['longName'] ??
+              raw['longname'] ??
+              raw['displayName'] ??
+              name)
+          .toString()
+          .trim();
+
+      if (type == 3) {
+        if (name.isNotEmpty) _subjectShortMap.putIfAbsent(id, () => name);
+        if (longName.isNotEmpty) {
+          _subjectLong.putIfAbsent(id, () => longName);
+        } else if (name.isNotEmpty) {
+          _subjectLong.putIfAbsent(id, () => name);
+        }
+      } else if (type == 4) {
+        final roomName = name.isNotEmpty ? name : longName;
+        if (roomName.isNotEmpty) _roomMap.putIfAbsent(id, () => roomName);
+      } else if (type == 2) {
+        final fore = (raw['foreName'] ?? raw['forename'] ?? '').toString().trim();
+        final full = fore.isNotEmpty ? '$fore $longName' : (longName.isNotEmpty ? longName : name);
+        if (full.isNotEmpty) _teacherMap.putIfAbsent(id, () => full);
+      }
+    }
+  }
+
   Future<void> _fetchMasterData({bool force = false}) async {
     if (!force &&
         _subjectShortMap.isNotEmpty &&
@@ -573,6 +637,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final id = room['id'] as int?;
         if (id != null) _roomMap[id] = (room['name'] ?? '').toString();
       }
+
+      if (_subjectShortMap.isEmpty || _roomMap.isEmpty || _teacherMap.isEmpty) {
+        final publicData = await _timetableRepository.fetchPublicWeeklyData(
+          context: _timetableRequestContext,
+          elementId: _viewingClassId ?? personId,
+          elementType: _viewingClassId != null
+              ? 1
+              : (personType == 0 ? 5 : personType),
+          date: _currentMonday,
+        );
+        if (publicData != null) {
+          final elements =
+              (publicData['elements'] as List?) ?? const <dynamic>[];
+          _populateMasterDataFromPublicElements(elements);
+        }
+      }
+
       unawaited(_saveMasterDataToCache());
     } catch (_) {}
   }
@@ -587,10 +668,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       vsync: this,
       initialIndex: resolveInitialTimetableDayIndex(DateTime.now()),
     )..addListener(_onSelectedDayChanged);
-    _cacheRefreshController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat();
     _highlightController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1600),
@@ -611,6 +688,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     demoModeNotifier.addListener(_onDemoModeChanged);
     pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
     lessonCardStyleNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonCleanDesignNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonExpressiveDesignNotifier.addListener(_onHiddenSubjectsChanged);
     glowEffectsEnabledNotifier.addListener(_onHiddenSubjectsChanged);
     lessonBlurEnabledNotifier.addListener(_onHiddenSubjectsChanged);
     lessonBlurAmountNotifier.addListener(_onHiddenSubjectsChanged);
@@ -678,9 +757,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       'EEEE, d. MMMM',
       _icuLocale(appLocaleNotifier.value),
     ).format(date);
-    await showUntisModalBottomSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
-      showDragHandle: true,
+      useSafeArea: false,
       builder: (sheetContext) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
@@ -800,7 +879,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     pendingTimetableActionNotifier.value = null;
 
     if (action == 'open_free_rooms') {
-      _showFreeRoomsDialog();
+      unawaited(_openRoomSearch());
       return;
     }
 
@@ -943,7 +1022,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         _tabController.indexIsChanging) {
       return;
     }
-    HapticFeedback.selectionClick();
+    unawaited(AppHaptics.selection());
     setState(() => _viewMode = (_viewMode + 1) % 3);
     final prefs = SettingsStore.instance.preferences;
     await prefs.setInt('timetableViewModeV2', _viewMode);
@@ -1229,7 +1308,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final schedule = todayLessons
         .take(7)
         .map((lesson) {
-          final time = _formatUntisTime(lesson['startTime']?.toString() ?? '');
+          final time = formatUntisTime(lesson['startTime']?.toString() ?? '');
           return '$time · ${label(lesson)}';
         })
         .join('\n');
@@ -1315,7 +1394,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
   }
 
-  void _onHiddenSubjectsChanged() => setState(() {});
+  bool _displaySettingsRebuildScheduled = false;
+
+  /// Many display settings notify this page. Changes that arrive together
+  /// (theme presets, account switches) are merged into a single rebuild.
+  void _onHiddenSubjectsChanged() {
+    if (!mounted || _displaySettingsRebuildScheduled) return;
+    _displaySettingsRebuildScheduled = true;
+    scheduleMicrotask(() {
+      _displaySettingsRebuildScheduled = false;
+      if (mounted) setState(() {});
+    });
+  }
 
   void _replaceMaterialDayCarouselController(int initialItem) {
     final previous = _materialDayCarouselController;
@@ -1424,52 +1514,60 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     // this page is still alive. Reconcile that durable cache before a swipe so
     // cancellations/room changes are visible during the gesture, not only
     // after the new week has been committed or the app has been restarted.
-    for (final delta in [-1, 1, 2]) {
-      final adjMonday = _weekMondayFromDelta(delta);
-      final key = _mondayKey(adjMonday);
-      if (!refreshFromDisk && _adjacentWeekCache.containsKey(key)) continue;
+    // The three weeks are independent, so read them from disk together.
+    await Future.wait([
+      for (final delta in const [-1, 1, 2])
+        () async {
+          final adjMonday = _weekMondayFromDelta(delta);
+          final key = _mondayKey(adjMonday);
+          if (!refreshFromDisk && _adjacentWeekCache.containsKey(key)) return;
 
-      final cached = await _loadWeekFromCache(
-        requestPersonId: pid,
-        requestPersonType: pType,
-        monday: adjMonday,
-      );
-      if (cached != null && cached.values.any((l) => l.isNotEmpty)) {
-        _adjacentWeekCache[key] = cached;
-        _notifyAdjacentWeekCacheChanged();
-      }
-    }
+          final cached = await _loadWeekFromCache(
+            requestPersonId: pid,
+            requestPersonType: pType,
+            monday: adjMonday,
+          );
+          if (cached != null && cached.values.any((l) => l.isNotEmpty)) {
+            _adjacentWeekCache[key] = cached;
+            _notifyAdjacentWeekCacheChanged();
+          }
+        }(),
+    ]);
 
     if (!allowNetwork) return;
 
     await _fetchMasterData();
-    for (final delta in [-1, 1, 2]) {
-      final adjMonday = _weekMondayFromDelta(delta);
-      final key = _mondayKey(adjMonday);
-      if (_adjacentWeekCache.containsKey(key)) continue;
-      try {
-        final friday = adjMonday.add(const Duration(days: 4));
-        final lessons = await _timetableRepository.fetchTimetable(
-          context: _timetableRequestContext,
-          elementId: pid,
-          elementType: pType,
-          startDate: adjMonday,
-          endDate: friday,
-          requestId: 'week_prefetch',
-        );
-        final tempWeek = _parseWeekResult(lessons);
-        if (tempWeek != null) {
-          _adjacentWeekCache[key] = tempWeek;
-          await _saveWeekToCache(
-            requestPersonId: pid,
-            requestPersonType: pType,
-            weekData: tempWeek,
-            monday: adjMonday,
-          );
-          _notifyAdjacentWeekCacheChanged();
-        }
-      } catch (_) {}
-    }
+    // Likewise fetch the weeks that are still missing in parallel.
+    await Future.wait([
+      for (final delta in const [-1, 1, 2])
+        () async {
+          final adjMonday = _weekMondayFromDelta(delta);
+          final key = _mondayKey(adjMonday);
+          if (_adjacentWeekCache.containsKey(key)) return;
+          try {
+            final friday = adjMonday.add(const Duration(days: 4));
+            final lessons = await _timetableRepository.fetchTimetable(
+              context: _timetableRequestContext,
+              elementId: pid,
+              elementType: pType,
+              startDate: adjMonday,
+              endDate: friday,
+              requestId: 'week_prefetch',
+            );
+            final tempWeek = _parseWeekResult(lessons);
+            if (tempWeek != null) {
+              _adjacentWeekCache[key] = tempWeek;
+              await _saveWeekToCache(
+                requestPersonId: pid,
+                requestPersonType: pType,
+                weekData: tempWeek,
+                monday: adjMonday,
+              );
+              _notifyAdjacentWeekCacheChanged();
+            }
+          } catch (_) {}
+        }(),
+    ]);
   }
 
   Map<int, List<dynamic>>? _parseWeekResult(dynamic result) {
@@ -1532,16 +1630,37 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       final firstSubject = suList.first as Map?;
       if (firstSubject != null) {
         final sId = firstSubject['id'] as int?;
-        lesson['_subjectShort'] = sId != null
-            ? (_subjectShortMap[sId] ??
-                  (firstSubject['name']?.toString() ?? '?'))
+        final rawShort = firstSubject['name']?.toString().trim() ?? '';
+        final rawLong = (firstSubject['longName'] ??
+                firstSubject['longname'] ??
+                '')
+            .toString()
+            .trim();
+        final mappedShort =
+            sId != null ? _subjectShortMap[sId]?.trim() ?? '' : '';
+        final mappedLong = sId != null ? _subjectLong[sId]?.trim() ?? '' : '';
+        final previousShort =
+            lesson['_subjectShort']?.toString().trim() ?? '';
+        final previousLong = lesson['_subjectLong']?.toString().trim() ?? '';
+
+        final short = mappedShort.isNotEmpty
+            ? mappedShort
+            : rawShort.isNotEmpty
+            ? rawShort
+            : (previousShort.isNotEmpty && previousShort != '?')
+            ? previousShort
             : '?';
-        lesson['_subjectLong'] = sId != null
-            ? (_subjectLong[sId] ??
-                  (firstSubject['longName']?.toString() ??
-                      firstSubject['name']?.toString() ??
-                      '?'))
-            : '?';
+
+        final long = mappedLong.isNotEmpty
+            ? mappedLong
+            : rawLong.isNotEmpty
+            ? rawLong
+            : (previousLong.isNotEmpty && previousLong != '?')
+            ? previousLong
+            : (short != '?' ? short : '?');
+
+        lesson['_subjectShort'] = short;
+        lesson['_subjectLong'] = long;
       }
     }
     final rawRo = lesson['ro'];
@@ -1553,15 +1672,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     if (roList.isNotEmpty) {
       final names = roList
           .map((ro) {
-            final rId = (ro as Map)['id'] as int?;
-            return rId != null
-                ? (_roomMap[rId] ?? (ro['name']?.toString() ?? '?'))
-                : (ro['name']?.toString() ?? '?');
+            if (ro is! Map) return '?';
+            final rId = ro['id'] as int?;
+            final rawName = ro['name']?.toString().trim() ?? '';
+            final mapped = rId != null ? _roomMap[rId]?.trim() : null;
+            if (mapped != null && mapped.isNotEmpty) return mapped;
+            if (rawName.isNotEmpty) return rawName;
+            return '?';
           })
           .where((name) => name != '?')
           .toSet()
           .toList();
-      lesson['_room'] = names.isNotEmpty ? names.join(', ') : '?';
+      final previousRoom = lesson['_room']?.toString().trim() ?? '';
+      lesson['_room'] = names.isNotEmpty
+          ? names.join(', ')
+          : (previousRoom.isNotEmpty && previousRoom != '?'
+              ? previousRoom
+              : '');
     }
   }
 
@@ -1830,7 +1957,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
       _materialDayIndex = normalized;
       setState(() {});
-      HapticFeedback.selectionClick();
+      AppHaptics.selection();
       return;
     }
 
@@ -1839,12 +1966,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final cached = _adjacentWeekCache[_mondayKey(newMonday)];
     final targetDay = normalized == 0 ? 4 : 0;
     setState(() {
-      _currentMonday = newMonday;
-      if (cached != null) {
-        _weekData = cached;
-        _showingCachedWeek = true;
-        _loading = false;
-      }
+      _stageWeekTarget(newMonday, cached);
     });
     _suppressDayTabControllerRebuild = true;
     try {
@@ -1854,7 +1976,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
     _replaceMaterialDayCarouselController(targetDay + 1);
     _replaceMaterialWeekCarouselController();
-    HapticFeedback.selectionClick();
+    AppHaptics.selection();
     unawaited(_fetchFullWeek());
     unawaited(_prefetchAdjacentWeeks());
   }
@@ -1869,12 +1991,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final cached = _adjacentWeekCache[_mondayKey(newMonday)];
     final targetDay = normalized == 0 ? 4 : 0;
     setState(() {
-      _currentMonday = newMonday;
-      if (cached != null) {
-        _weekData = cached;
-        _showingCachedWeek = true;
-        _loading = false;
-      }
+      _stageWeekTarget(newMonday, cached);
     });
     _suppressDayTabControllerRebuild = true;
     try {
@@ -1884,7 +2001,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
     _replaceMaterialWeekCarouselController();
     _replaceMaterialDayCarouselController(targetDay + 1);
-    HapticFeedback.selectionClick();
+    AppHaptics.selection();
     unawaited(_fetchFullWeek());
     unawaited(_prefetchAdjacentWeeks());
   }
@@ -2322,12 +2439,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           );
           final cached = _adjacentWeekCache[_mondayKey(newMonday)];
           setState(() {
-            _currentMonday = newMonday;
-            if (cached != null) {
-              _weekData = cached;
-              _showingCachedWeek = true;
-              _loading = false;
-            }
+            _stageWeekTarget(newMonday, cached);
           });
           _tabController.animateTo(
             resolvedTargetDay < 0 ? 4 : 0,
@@ -2336,7 +2448,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           _fetchFullWeek();
           _prefetchAdjacentWeeks();
         }
-        HapticFeedback.selectionClick();
+        AppHaptics.selection();
       }
       setState(() {
         _dayCarouselOffset = 0;
@@ -2441,12 +2553,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final cacheKey = _mondayKey(newMonday);
         final cached = _adjacentWeekCache[cacheKey];
         setState(() {
-          _currentMonday = newMonday;
-          if (cached != null) {
-            _weekData = cached;
-            _showingCachedWeek = true;
-            _loading = false;
-          }
+          _stageWeekTarget(newMonday, cached);
           _carouselOffset = 0;
           // Synchronize TabController index when jumping weeks
           if (direction < 0) {
@@ -2456,7 +2563,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           }
         });
         _isWeekCarouselAnimating = false;
-        HapticFeedback.selectionClick();
+        AppHaptics.selection();
         _fetchFullWeek();
         _prefetchAdjacentWeeks();
       }
@@ -2478,6 +2585,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     demoModeNotifier.removeListener(_onDemoModeChanged);
     pendingTimetableActionNotifier.removeListener(_onPendingTimetableAction);
     lessonCardStyleNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonCleanDesignNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonExpressiveDesignNotifier.removeListener(_onHiddenSubjectsChanged);
     glowEffectsEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonBlurEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonBlurAmountNotifier.removeListener(_onHiddenSubjectsChanged);
@@ -2502,8 +2611,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     _materialWeekCarouselController?.dispose();
     _highlightTimer?.cancel();
     _highlightController?.dispose();
-    _cacheRefreshController.dispose();
     super.dispose();
+  }
+
+  void _stageWeekTarget(DateTime monday, Map<int, List<dynamic>>? cached) {
+    _currentMonday = monday;
+    _displayedMonday = monday;
+    if (cached != null) {
+      _weekData = cached;
+      _showingCachedWeek = true;
+      _loading = false;
+      _loadError = null;
+    } else {
+      _weekData = _emptyWeekData();
+      _showingCachedWeek = false;
+      _loading = true;
+      _loadError = null;
+    }
   }
 
   @override
@@ -2789,95 +2913,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return ranges;
   }
 
-  List<_TimeRangeLabel> _collectTimeRangesFromDay(int dayIndex) {
-    final dayLessons = _weekData[dayIndex] ?? const <dynamic>[];
-    final ranges = <_TimeRangeLabel>[];
-    final seen = <String>{};
-
-    for (final lesson in dayLessons.whereType<Map>()) {
-      final map = lesson.cast<dynamic, dynamic>();
-      if (isTimetableCancelled(map)) continue;
-      final start = _lessonStartMinutes(map);
-      final end = _lessonEndMinutes(map);
-      if (end <= start) continue;
-      final key = '$start-$end';
-      if (seen.add(key)) {
-        ranges.add(_TimeRangeLabel(startMin: start, endMin: end));
-      }
-    }
-
-    ranges.sort((a, b) {
-      final byStart = a.startMin.compareTo(b.startMin);
-      if (byStart != 0) return byStart;
-      return a.endMin.compareTo(b.endMin);
-    });
-    return ranges;
-  }
-
-  Set<int> _lessonRoomIds(Map<dynamic, dynamic> lesson) {
-    final ids = <int>{};
-    final ro = lesson['ro'];
-    if (ro is List) {
-      for (final entry in ro.whereType<Map>()) {
-        final id = entry['id'];
-        if (id is int) {
-          ids.add(id);
-        } else {
-          final parsed = int.tryParse(id?.toString() ?? '');
-          if (parsed != null) ids.add(parsed);
-        }
-      }
-    }
-
-    if (ids.isEmpty) {
-      final roomName = (lesson['_room'] ?? '').toString().trim();
-      if (roomName.isNotEmpty) {
-        _roomMap.forEach((id, name) {
-          if (name.trim().toLowerCase() == roomName.toLowerCase()) {
-            ids.add(id);
-          }
-        });
-      }
-    }
-
-    return ids;
-  }
-
-  List<String> _computeFreeRooms({
-    required List<List<dynamic>> timetables,
-    required int startMin,
-    required int endMin,
-  }) {
-    final occupiedIds = <int>{};
-    for (final periods in timetables) {
-      for (final raw in periods) {
-        if (raw is! Map) continue;
-        final lesson = raw.cast<dynamic, dynamic>();
-        if (isTimetableCancelled(lesson)) continue;
-        final lessonStart = _lessonStartMinutes(lesson);
-        final lessonEnd = _lessonEndMinutes(lesson);
-        if (lessonStart < endMin && lessonEnd > startMin) {
-          occupiedIds.addAll(_lessonRoomIds(lesson));
-        }
-      }
-    }
-
-    final freeRooms = <String>[];
-    final seenNames = <String>{};
-    final sortedEntries = _roomMap.entries.toList()
-      ..sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
-
-    for (final entry in sortedEntries) {
-      if (occupiedIds.contains(entry.key)) continue;
-      final name = entry.value.trim();
-      if (name.isEmpty) continue;
-      if (seenNames.add(name.toLowerCase())) {
-        freeRooms.add(name);
-      }
-    }
-    return freeRooms;
-  }
-
   List<Map<String, dynamic>> _getHolidaysForDay(DateTime day) {
     final dayInt = untisDateInt(day);
     return _holidays.where((h) {
@@ -2889,284 +2924,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       if (s == null || e == null) return false;
       return dayInt >= s && dayInt <= e;
     }).toList();
-  }
-
-  Future<void> _showFreeRoomsDialog() async {
-    final l = appL10nFor(appLocaleNotifier.value);
-    final dayIndex = _tabController.index.clamp(0, 4);
-    final ranges = _collectTimeRangesFromDay(dayIndex);
-
-    if (ranges.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l.freeRoomsNoRangesHint),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    final dayDate = _currentMonday.add(Duration(days: dayIndex));
-    int selectedIndex = 0;
-    final now = DateTime.now();
-    final isToday =
-        dayDate.year == now.year &&
-        dayDate.month == now.month &&
-        dayDate.day == now.day;
-
-    if (isToday) {
-      final nowMin = now.hour * 60 + now.minute;
-      final idx = ranges.indexWhere(
-        (r) => nowMin >= r.startMin && nowMin < r.endMin,
-      );
-      if (idx >= 0) selectedIndex = idx;
-    }
-
-    if (!mounted) return;
-    showUntisDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    final List<List<String>> freeRoomsForRange;
-    if (demoModeNotifier.value) {
-      freeRoomsForRange = List.generate(
-        ranges.length,
-        DemoModeService.demoFreeRooms,
-      );
-    } else {
-      final classes = await _fetchClasses();
-      List<List<dynamic>> timetables = [];
-      if (classes.isNotEmpty) {
-        final results = await Future.wait(
-          classes.map((c) => _fetchClassTimetable(c['id'] as int, dayDate)),
-          eagerError: false,
-        );
-        timetables = results.whereType<List<dynamic>>().toList();
-      }
-      freeRoomsForRange = [
-        for (final range in ranges)
-          _computeFreeRooms(
-            timetables: timetables,
-            startMin: range.startMin,
-            endMin: range.endMin,
-          ),
-      ];
-    }
-
-    if (!mounted) return;
-    if (context.mounted) Navigator.of(context).pop();
-
-    await showUntisModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      sheetAnimationStyle: _kBottomSheetAnimationStyle,
-      builder: (ctx) {
-        final cs = Theme.of(ctx).colorScheme;
-        return StatefulBuilder(
-          builder: (ctx, setDlg) {
-            final freeRooms = freeRoomsForRange[selectedIndex];
-            final dayName = _dayShort[dayIndex];
-
-            return _glassContainer(
-              context: ctx,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(32),
-              ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: cs.outlineVariant,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                      children: [
-                        Text(
-                          l.freeRoomsTitle,
-                          style: GoogleFonts.outfit(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '$dayName • ${_formatMinutes(ranges[selectedIndex].startMin)} - ${_formatMinutes(ranges[selectedIndex].endMin)}',
-                          style: GoogleFonts.outfit(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          l.freeRoomsSelectTime,
-                          style: GoogleFonts.outfit(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (int i = 0; i < ranges.length; i++)
-                              ChoiceChip(
-                                selected: i == selectedIndex,
-                                showCheckmark: true,
-                                side: BorderSide(
-                                  color:
-                                      (i == selectedIndex
-                                              ? cs.primary
-                                              : cs.outlineVariant)
-                                          .withValues(
-                                            alpha: i == selectedIndex
-                                                ? 0.48
-                                                : 0.65,
-                                          ),
-                                ),
-                                backgroundColor: cs.surfaceContainerHigh
-                                    .withValues(
-                                      alpha: blurEnabledNotifier.value
-                                          ? 0.86
-                                          : 0.92,
-                                    ),
-                                selectedColor: cs.primaryContainer.withValues(
-                                  alpha: 0.92,
-                                ),
-                                label: Text(
-                                  '${_formatMinutes(ranges[i].startMin)} - ${_formatMinutes(ranges[i].endMin)}',
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: i == selectedIndex
-                                        ? FontWeight.w700
-                                        : FontWeight.w600,
-                                    color: i == selectedIndex
-                                        ? cs.onPrimaryContainer
-                                        : cs.onSurface.withValues(alpha: 0.98),
-                                  ),
-                                ),
-                                onSelected: (_) {
-                                  setDlg(() => selectedIndex = i);
-                                },
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          l.freeRoomsCount(freeRooms.length),
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w700,
-                            color: cs.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        if (freeRooms.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: cs.surfaceContainerHigh.withValues(
-                                alpha: blurEnabledNotifier.value ? 0.88 : 0.94,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: cs.outlineVariant.withValues(
-                                  alpha: 0.55,
-                                ),
-                              ),
-                            ),
-                            child: Text(
-                              l.freeRoomsNoneFound,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w600,
-                                color: cs.onSurfaceVariant.withValues(
-                                  alpha: 0.96,
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          ...freeRooms.asMap().entries.map((entry) {
-                            final i = entry.key;
-                            final room = entry.value;
-                            return _springEntry(
-                              duration: Duration(milliseconds: 300 + i * 50),
-                              offsetY: 16,
-                              startScale: 0.95,
-                              curve: _kSmoothBounce,
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                decoration: BoxDecoration(
-                                  color: cs.surfaceContainerHigh.withValues(
-                                    alpha: blurEnabledNotifier.value
-                                        ? 0.86
-                                        : 0.92,
-                                  ),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: cs.outlineVariant.withValues(
-                                      alpha: 0.56,
-                                    ),
-                                  ),
-                                ),
-                                child: ListTile(
-                                  leading: Icon(
-                                    Icons.meeting_room_outlined,
-                                    color: cs.primary,
-                                  ),
-                                  title: Text(
-                                    room,
-                                    style: GoogleFonts.outfit(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchClasses() async {
-    final catalog = await _timetableRepository.fetchClassCatalog(
-      WebUntisRequestContext(
-        schoolUrl: schoolUrl,
-        schoolName: schoolName,
-        sessionId: sessionID,
-      ),
-    );
-    return catalog.classes;
-  }
-
-  Future<List<dynamic>> _fetchClassTimetable(int classId, DateTime date) async {
-    try {
-      return await _timetableRepository.fetchClassTimetable(
-        context: _timetableRequestContext,
-        classId: classId,
-        date: date,
-      );
-    } catch (_) {
-      return const <dynamic>[];
-    }
   }
 
   static const List<double> _grayscaleMatrix = <double>[
@@ -3195,7 +2952,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   Widget _dimPastLesson({required Widget child, required bool dim}) {
     if (!dim || !lessonDimPastNotifier.value) return child;
     return Opacity(
-      opacity: 0.45,
+      opacity: 0.58,
       child: ColorFiltered(
         colorFilter: const ColorFilter.matrix(_grayscaleMatrix),
         child: child,
@@ -3228,266 +2985,35 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     bool useStripes = true,
     double? availableWidth,
     double? availableHeight,
+    VoidCallback? onTap,
+    VoidCallback? onLongPress,
   }) {
-    final tokens = untisThemeTokensOf(context);
-    final visuals = LessonCardVisualsResolver.resolve(
-      context: context,
-      tokens: tokens,
-      isDark: isDark,
+    return TimetableLessonCard(
       isCancelled: isCancelled,
+      isSubstitution: isSubstitution,
+      isDark: isDark,
+      fgColor: fgColor,
+      bgColor: bgColor,
+      subject: subject,
+      teacher: teacher,
+      room: room,
       isNow: isNow,
-      foregroundColor: fgColor,
-      backgroundColor: bgColor,
+      subjectIcon: subjectIcon,
       isTeacherMissing: isTeacherMissing,
-      usePattern: useStripes,
+      hasHomework: hasHomework,
+      hasExam: hasExam,
+      originalTeacher: originalTeacher,
       borderRadius: borderRadius,
+      padding: padding,
       accentWidth: accentWidth,
-    );
-    final effectiveRadius = visuals.radius;
-    final cardRadius = visuals.borderRadius;
-    final blurEnabled = visuals.blurEnabled;
-    final blurSigma = visuals.blurSigma;
-    final accentStyle = visuals.accentStyle;
-    final showPattern = visuals.showPattern;
-    final showTeacher = lessonShowTeacherNotifier.value;
-    final showRoom = lessonShowRoomNotifier.value;
-    final isSubstituted =
-        showTeacher && originalTeacher.isNotEmpty && originalTeacher != teacher;
-    final compact = lessonCompactModeNotifier.value;
-
-    final heightCompact = availableHeight != null && availableHeight < 58;
-    final heightMinimal = availableHeight != null && availableHeight < 40;
-    final widthCompact = availableWidth != null && availableWidth < 54;
-    final effectivePadding = heightMinimal
-        ? const EdgeInsets.fromLTRB(5, 2, 4, 2)
-        : heightCompact
-        ? const EdgeInsets.fromLTRB(6, 3, 5, 3)
-        : padding != null
-        ? (compact
-              ? EdgeInsets.fromLTRB(
-                  padding.left.clamp(3.0, 6.0),
-                  (padding.top * 0.7).clamp(2.0, 5.0),
-                  padding.right.clamp(3.0, 6.0),
-                  (padding.bottom * 0.7).clamp(2.0, 5.0),
-                )
-              : padding)
-        : (compact
-              ? const EdgeInsets.fromLTRB(6, 3, 5, 3)
-              : const EdgeInsets.fromLTRB(8, 5, 6, 5));
-
-    final effectiveSubjectFontSize = compact || widthCompact || heightCompact
-        ? (subjectFontSize * 0.92).clamp(8.5, 14.0)
-        : subjectFontSize;
-    final effectiveTeacherFontSize = compact
-        ? (teacherFontSize * 0.90).clamp(7.5, 12.0)
-        : teacherFontSize;
-    final effectiveRoomFontSize = compact
-        ? (roomFontSize * 0.90).clamp(7.5, 12.0)
-        : roomFontSize;
-
-    final shadows = visuals.shadows;
-    final effectiveFillColor = visuals.fillColor;
-    final effectiveGradient = visuals.gradient;
-    final effectiveBorder = visuals.border;
-    final effectiveTextColor = visuals.textColor;
-    final effectiveSecondaryTextColor = visuals.secondaryTextColor;
-    final effectiveAccentWidth = visuals.accentWidth;
-
-    Widget cardContent = Stack(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: effectiveFillColor,
-            gradient: effectiveGradient,
-            borderRadius: cardRadius,
-            border: effectiveBorder,
-          ),
-        ),
-        if (showPattern)
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _StripedHatchPainter(
-                color: fgColor.withValues(alpha: isDark ? 0.18 : 0.12),
-                stripeWidth: 2.0,
-                gap: 7.0,
-              ),
-            ),
-          ),
-        if (accentStyle == 0 || accentStyle == 1)
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: effectiveAccentWidth,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [fgColor, fgColor.withValues(alpha: 0.7)],
-                ),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(effectiveRadius),
-                  bottomLeft: Radius.circular(effectiveRadius),
-                ),
-              ),
-            ),
-          ),
-        Padding(
-          padding: effectivePadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (accentStyle == 2) ...[
-                    Container(
-                      width: 6.5,
-                      height: 6.5,
-                      margin: const EdgeInsets.only(right: 4.5),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: fgColor,
-                        boxShadow: _glowShadows(context, [
-                          BoxShadow(
-                            color: fgColor.withValues(alpha: 0.6),
-                            blurRadius: 4,
-                          ),
-                        ]),
-                      ),
-                    ),
-                  ],
-                  Flexible(
-                    child: Text(
-                      subject,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: untisThemeTextStyle(
-                        context,
-                        display: true,
-                        fontSize: effectiveSubjectFontSize,
-                        fontWeight: FontWeight.w800,
-                        color: effectiveTextColor,
-                        decoration: isCancelled
-                            ? TextDecoration.lineThrough
-                            : null,
-                        decorationColor: fgColor.withValues(alpha: 0.6),
-                        decorationThickness: 1.6,
-                      ),
-                    ),
-                  ),
-                  if (lessonShowSubjectIconsNotifier.value &&
-                      subjectIcon != null &&
-                      !widthCompact &&
-                      !heightMinimal) ...[
-                    Icon(
-                      subjectIcon,
-                      size: (effectiveSubjectFontSize * 1.15).clamp(11.0, 17.0),
-                      color: effectiveTextColor.withValues(alpha: 0.85),
-                    ),
-                    const SizedBox(width: 3.5),
-                  ],
-                  if ((hasExam || hasHomework) && !widthCompact) ...[
-                    const SizedBox(width: 4),
-                    Icon(
-                      hasExam
-                          ? Icons.assignment_turned_in_rounded
-                          : Icons.assignment_rounded,
-                      size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
-                      color: effectiveTextColor.withValues(alpha: 0.8),
-                    ),
-                  ],
-                  if (isTeacherMissing && !widthCompact) ...[
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.person_off_rounded,
-                      size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
-                      color: Colors.deepOrange.withValues(alpha: 0.9),
-                    ),
-                  ],
-                  if (isSubstitution && !widthCompact && !heightMinimal) ...[
-                    const SizedBox(width: 3),
-                    Icon(
-                      Icons.swap_horiz_rounded,
-                      size: (effectiveSubjectFontSize * 0.95).clamp(10.0, 15.0),
-                      color: effectiveTextColor.withValues(alpha: 0.9),
-                    ),
-                  ],
-                ],
-              ),
-              if (!heightMinimal &&
-                  showTeacher &&
-                  teacher.isNotEmpty &&
-                  (availableHeight == null || availableHeight >= 42))
-                Text(
-                  teacher,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: untisThemeTextStyle(
-                    context,
-                    fontSize: effectiveTeacherFontSize,
-                    fontWeight: isSubstituted
-                        ? FontWeight.w800
-                        : FontWeight.w600,
-                    color: isSubstituted
-                        ? effectiveTextColor
-                        : effectiveSecondaryTextColor,
-                  ),
-                ),
-              if (isSubstituted &&
-                  (availableHeight == null || availableHeight >= 54))
-                Text(
-                  originalTeacher,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: untisThemeTextStyle(
-                    context,
-                    fontSize: effectiveTeacherFontSize * 0.9,
-                    fontWeight: FontWeight.w500,
-                    color: effectiveSecondaryTextColor.withValues(alpha: 0.6),
-                    decoration: TextDecoration.lineThrough,
-                    decorationColor: fgColor.withValues(alpha: 0.55),
-                    decorationThickness: 1.4,
-                  ),
-                ),
-              if (!heightCompact &&
-                  showRoom &&
-                  room.isNotEmpty &&
-                  (availableHeight == null || availableHeight >= 58))
-                Text(
-                  room,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: untisThemeTextStyle(
-                    context,
-                    fontSize: effectiveRoomFontSize,
-                    fontWeight: FontWeight.w600,
-                    color: effectiveSecondaryTextColor,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-
-    if (blurEnabled) {
-      cardContent = ClipRRect(
-        borderRadius: cardRadius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: cardContent,
-        ),
-      );
-    } else {
-      cardContent = ClipRRect(borderRadius: cardRadius, child: cardContent);
-    }
-
-    return Container(
-      decoration: BoxDecoration(borderRadius: cardRadius, boxShadow: shadows),
-      child: cardContent,
+      subjectFontSize: subjectFontSize,
+      teacherFontSize: teacherFontSize,
+      roomFontSize: roomFontSize,
+      useStripes: useStripes,
+      availableWidth: availableWidth,
+      availableHeight: availableHeight,
+      onTap: onTap,
+      onLongPress: onLongPress,
     );
   }
 
@@ -3602,9 +3128,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final wd = weekData ?? _weekData;
     final m = monday ?? _currentMonday;
     final media = MediaQuery.of(context);
+    final pixelsPerMinute = 1.5 * _gridTextScale;
     final topContentPadding = _isExportingTimetable
         ? 10.0
-        : media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
+        : media.padding.top + kToolbarHeight + _dayTabsHeight + 10;
 
     final lessons = (wd[dayIndex] ?? [])
         .where(
@@ -3629,14 +3156,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     globalMax = globalMax + 15;
 
     final totalMinutes = globalMax - globalMin;
-    final totalHeight = totalMinutes * _ppm;
+    final totalHeight = totalMinutes * pixelsPerMinute;
 
     final List<int> ticks = [];
     for (int m = globalMin - (globalMin % 60) + 60; m < globalMax; m += 60) {
       ticks.add(m);
     }
 
-    const double timeColWidth = 40;
+    final isExpressive = lessonExpressiveDesignNotifier.value;
+    final timeColWidth = (isExpressive ? 48.0 : 40.0) * _gridTextScale;
     // During a week swipe, render time and date labels from the incoming
     // cached week as well. Reading the active week here made those rails lag
     // behind the cards until the snap animation had already completed.
@@ -3644,19 +3172,55 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final filteredTimeLabels = _filterTimeLabels(timeRanges);
 
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final dayDate = m.add(Duration(days: dayIndex));
-    final isToday =
-        dayDate.year == now.year &&
-        dayDate.month == now.month &&
-        dayDate.day == now.day;
+    final dayOnly = DateTime(dayDate.year, dayDate.month, dayDate.day);
+    final isToday = dayOnly.isAtSameMomentAs(today);
     final nowMin = now.hour * 60 + now.minute;
     final showNowLine = isToday && nowMin >= globalMin && nowMin <= globalMax;
-    final nowTop = (nowMin - globalMin) * _ppm;
+    final nowTop = (nowMin - globalMin) * pixelsPerMinute;
     final visibleLessons = lessons
         .where((l) => showCancelledNotifier.value || !isTimetableCancelled(l))
         .toList();
     final mergedLessons = _mergeConsecutiveLessons(visibleLessons);
     final lessonSlots = _computeLessonSlots(mergedLessons);
+
+    final expressiveTimeSlots = <({int startMin, int endMin})>[];
+    if (isExpressive) {
+      final seenStarts = <int, int>{};
+      for (final slot in lessonSlots) {
+        final prevEnd = seenStarts[slot.startMin];
+        if (prevEnd == null || slot.endMin > prevEnd) {
+          seenStarts[slot.startMin] = slot.endMin;
+        }
+      }
+      for (final entry in seenStarts.entries) {
+        expressiveTimeSlots.add((startMin: entry.key, endMin: entry.value));
+      }
+      expressiveTimeSlots.sort((a, b) => a.startMin.compareTo(b.startMin));
+    }
+
+    double railTop = 0.0;
+    double railBottom = 0.0;
+    if (isExpressive && expressiveTimeSlots.isNotEmpty) {
+      railTop = math.max(
+        0.0,
+        (expressiveTimeSlots.first.startMin - globalMin) * pixelsPerMinute,
+      );
+      final lastEndMin = lessonSlots
+          .map((s) => s.endMin)
+          .fold(expressiveTimeSlots.last.endMin, math.max);
+      final railEnd = (lastEndMin - globalMin) * pixelsPerMinute;
+      railBottom = math.max(0.0, totalHeight - railEnd);
+      if (showNowLine) {
+        if (nowTop < railTop) {
+          railTop = math.max(0.0, nowTop - 4.0);
+        }
+        if (totalHeight - nowTop < railBottom) {
+          railBottom = math.max(0.0, totalHeight - (nowTop + 4.0));
+        }
+      }
+    }
 
     final csG = Theme.of(context).colorScheme;
     return ExpressiveRefreshIndicator(
@@ -3675,9 +3239,58 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               width: timeColWidth,
               height: totalHeight,
               child: Stack(
-                children: filteredTimeLabels.isNotEmpty
+                children: (isExpressive && expressiveTimeSlots.isNotEmpty)
+                    ? expressiveTimeSlots.asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final slot = entry.value;
+                        final top =
+                            (slot.startMin - globalMin) * pixelsPerMinute;
+                        final nextStart = i + 1 < expressiveTimeSlots.length
+                            ? expressiveTimeSlots[i + 1].startMin
+                            : 99999;
+                        final gapPx =
+                            (nextStart - slot.startMin) * pixelsPerMinute;
+                        final showEndTime = gapPx >= 24.0;
+                        return Positioned(
+                          top: top + 1.0,
+                          left: 0,
+                          right: 0,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _formatMinutes(slot.startMin),
+                                textAlign: TextAlign.right,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.15,
+                                  color: csG.onSurfaceVariant,
+                                ),
+                              ),
+                              if (showEndTime) ...[
+                                const SizedBox(height: 1.5),
+                                Text(
+                                  _formatMinutes(slot.endMin),
+                                  textAlign: TextAlign.right,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.0,
+                                    color: csG.onSurfaceVariant.withValues(
+                                      alpha: 0.65,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      }).toList()
+                    : filteredTimeLabels.isNotEmpty
                     ? filteredTimeLabels.map((value) {
-                        final top = (value - globalMin) * _ppm - 9;
+                        final top = (value - globalMin) * pixelsPerMinute - 9;
                         return Positioned(
                           top: top,
                           left: 0,
@@ -3696,7 +3309,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                         );
                       }).toList()
                     : ticks.map((tick) {
-                        final top = (tick - globalMin) * _ppm - 9;
+                        final top = (tick - globalMin) * pixelsPerMinute - 9;
                         return Positioned(
                           top: top,
                           left: 0,
@@ -3716,7 +3329,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       }).toList(),
               ),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: isExpressive ? 8.0 : 4.0),
             Expanded(
               child: SizedBox(
                 height: totalHeight,
@@ -3724,33 +3337,47 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   builder: (context, constraints) {
                     return Stack(
                       children: [
-                        ...ticks.map((tick) {
-                          final top = (tick - globalMin) * _ppm;
-                          return Positioned(
-                            top: top,
-                            left: 0,
-                            right: 0,
+                        if (isExpressive)
+                          Positioned(
+                            top: railTop,
+                            bottom: railBottom,
+                            left: 1.0,
+                            width: 2.0,
                             child: Container(
-                              height: 0.45,
-                              color: csG.outlineVariant.withValues(alpha: 0.28),
+                              decoration: BoxDecoration(
+                                color: csG.outlineVariant.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
                             ),
-                          );
-                        }),
+                          ),
+                        if (!isExpressive)
+                          ...ticks.map((tick) {
+                            final top = (tick - globalMin) * pixelsPerMinute;
+                            return Positioned(
+                              top: top,
+                              left: 0,
+                              right: 0,
+                              child: Container(
+                                height: 0.45,
+                                color: csG.outlineVariant.withValues(alpha: 0.28),
+                              ),
+                            );
+                          }),
                         ..._getHolidaysForDay(dayDate).map((holiday) {
                           final holidayStartMin = _toMinutes(800);
                           final holidayEndMin = _toMinutes(1800);
-                          final top = (holidayStartMin - globalMin) * _ppm;
+                          final top =
+                              (holidayStartMin - globalMin) * pixelsPerMinute;
                           final height =
-                              ((holidayEndMin - holidayStartMin) * _ppm).clamp(
-                                28.0,
-                                9999.0,
-                              );
+                              ((holidayEndMin - holidayStartMin) *
+                                      pixelsPerMinute)
+                                  .clamp(28.0, 9999.0);
                           final holidayName =
                               (holiday['longName'] ?? holiday['name'] ?? '')
                                   .toString();
                           return Positioned(
                             top: top,
-                            left: 2,
+                            left: isExpressive ? 12.0 : 2.0,
                             right: 2,
                             height: height,
                             child: Material(
@@ -3796,18 +3423,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           final l = slot.lesson;
                           final startMin = slot.startMin;
                           final endMin = slot.endMin;
-                          final top = (startMin - globalMin) * _ppm;
-                          final height = ((endMin - startMin) * _ppm).clamp(
-                            28.0,
-                            9999.0,
-                          );
-                          final dim = isToday && endMin <= nowMin;
+                          final top = (startMin - globalMin) * pixelsPerMinute;
+                          final height = ((endMin - startMin) * pixelsPerMinute)
+                              .clamp(28.0, 9999.0);
+                          final dim = isTimetableLessonPast(dayDate: dayDate, endMin: endMin, now: now);
 
-                          const horizontalInset = 2.0;
-                          const columnGap = 4.0;
+                          final leftInset = isExpressive ? 12.0 : 2.0;
+                          const rightInset = 2.0;
+                          final columnGap = isExpressive ? 6.0 : 4.0;
                           final columns = slot.columnCount;
                           final availableWidth =
-                              constraints.maxWidth - (horizontalInset * 2);
+                              constraints.maxWidth - (leftInset + rightInset);
                           final totalGap = (columns - 1) * columnGap;
                           final rawCardWidth =
                               (availableWidth - totalGap) / columns;
@@ -3815,7 +3441,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               ? rawCardWidth
                               : 8.0;
                           final left =
-                              horizontalInset +
+                              leftInset +
                               (slot.column * (cardWidth + columnGap));
 
                           return Positioned(
@@ -3881,7 +3507,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                 true
                                             ? l['_subjectLong'].toString()
                                             : '?');
-                                  final room = l['_room']?.toString() ?? '';
+                                  final rawRoom =
+                                      (l['_room']?.toString() ?? '').trim();
+                                  final room =
+                                      rawRoom == '?' ? '' : rawRoom;
                                   final teacher = _displayTeacher(l);
                                   final isCurrent =
                                       (startMin <= nowMin && nowMin < endMin);
@@ -3954,6 +3583,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       hasHomework: hasHomework,
                                       hasExam: hasExam,
                                       originalTeacher: originalTeacher,
+                                      availableWidth: cardWidth,
+                                      availableHeight: height,
+                                      onTap: () => _showLessonDetail(
+                                        context,
+                                        l,
+                                        originalTeacher: originalTeacher,
+                                      ),
+                                      onLongPress: () =>
+                                          _editLessonTemporarily(l),
                                       padding: const EdgeInsets.fromLTRB(
                                         8,
                                         5,
@@ -3979,32 +3617,40 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                         }),
                         if (showNowLine)
                           Positioned(
-                            top: nowTop - 1,
+                            top: lessonExpressiveDesignNotifier.value
+                                ? nowTop - 6
+                                : nowTop - 1,
                             left: 0,
                             right: 0,
                             child: IgnorePointer(
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 5,
-                                    height: 5,
-                                    decoration: BoxDecoration(
-                                      color: csG.error,
-                                      shape: BoxShape.circle,
+                              child: lessonExpressiveDesignNotifier.value
+                                  ? ExpressiveNowWaveIndicator(
+                                      color: csG.primary,
+                                      height: 12,
+                                    )
+                                  : Row(
+                                      children: [
+                                        Container(
+                                          width: 5,
+                                          height: 5,
+                                          decoration: BoxDecoration(
+                                            color: csG.error,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Container(
+                                            height: 2,
+                                            decoration: BoxDecoration(
+                                              color: csG.error,
+                                              borderRadius:
+                                                  BorderRadius.circular(2),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Container(
-                                      height: 2,
-                                      decoration: BoxDecoration(
-                                        color: csG.error,
-                                        borderRadius: BorderRadius.circular(2),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ),
                           ),
                       ],
@@ -4029,9 +3675,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final m = monday ?? _currentMonday;
     final shownDays = visibleDays ?? _visibleGridDays;
     final media = MediaQuery.of(context);
+    final pixelsPerMinute = 1.5 * _gridTextScale;
     final topContentPadding = _isExportingTimetable
         ? 10.0
-        : media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
+        : media.padding.top + kToolbarHeight + _dayTabsHeight + 10;
 
     int globalMin = 480;
     int globalMax = 900;
@@ -4047,7 +3694,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     globalMin = (globalMin - 15).clamp(0, 23 * 60);
     globalMax = globalMax + 15;
 
-    final totalHeight = (globalMax - globalMin) * _ppm;
+    final totalHeight = (globalMax - globalMin) * pixelsPerMinute;
 
     final List<int> ticks = [];
     for (
@@ -4058,13 +3705,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       ticks.add(min);
     }
 
-    const double timeColWidth = 40.0;
-    const double minDayColWidth = 56.0;
+    final timeColWidth = 40 * _gridTextScale;
     const double dayColGap = 4.0;
-    // Leave a real trailing gutter inside the horizontal viewport. Without
-    // it, the Friday column ends exactly at the clip edge on phones and its
-    // card border/shadow can be cut off.
-    const double trailingDayGridInset = 12.0;
     final visibleWeekData = <int, List<dynamic>>{
       for (final dayIndex in shownDays)
         dayIndex: wd[dayIndex] ?? const <dynamic>[],
@@ -4083,7 +3725,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         shownDays.contains(todayIndex) &&
         nowMin >= globalMin &&
         nowMin <= globalMax;
-    final nowTop = (nowMin - globalMin) * _ppm;
+    final nowTop = (nowMin - globalMin) * pixelsPerMinute;
 
     return ExpressiveRefreshIndicator(
       onRefresh: _onRefresh,
@@ -4100,23 +3742,22 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final dayGridWidth = math.max(
-              (shownDays.length * minDayColWidth) +
-                  (dayColGap * (shownDays.length - 1)),
-              constraints.maxWidth - timeColWidth - 4 - trailingDayGridInset,
+            final effectiveDayColGap = shownDays.length > 3 ? 3.0 : dayColGap;
+            final availableDayGridWidth = math.max(
+              0.0,
+              constraints.maxWidth - timeColWidth - 4,
             );
+            final dayGridWidth = availableDayGridWidth;
             final dayColWidth =
-                (dayGridWidth - (dayColGap * (shownDays.length - 1))) /
+                (dayGridWidth - (effectiveDayColGap * (shownDays.length - 1))) /
                 shownDays.length;
 
-            // On small screens all day columns cannot fit alongside the time
-            // gutter. Keep their minimum readable width and scroll horizontally.
             return SingleChildScrollView(
               key: const ValueKey('week-grid-horizontal-scroll'),
               scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
+              physics: const NeverScrollableScrollPhysics(),
               child: SizedBox(
-                width: timeColWidth + 4 + dayGridWidth + trailingDayGridInset,
+                width: constraints.maxWidth,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -4129,7 +3770,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           child: Stack(
                             children: filteredTimeLabels.isNotEmpty
                                 ? filteredTimeLabels.map((value) {
-                                    final top = (value - globalMin) * _ppm - 9;
+                                    final top =
+                                        (value - globalMin) * pixelsPerMinute -
+                                        9;
                                     return Positioned(
                                       top: top,
                                       left: 0,
@@ -4148,7 +3791,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                     );
                                   }).toList()
                                 : ticks.map((tick) {
-                                    final top = (tick - globalMin) * _ppm - 9;
+                                    final top =
+                                        (tick - globalMin) * pixelsPerMinute -
+                                        9;
                                     return Positioned(
                                       top: top,
                                       left: 0,
@@ -4204,14 +3849,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               margin: EdgeInsets.only(
                                 right: visibleIndex == shownDays.length - 1
                                     ? 0
-                                    : dayColGap,
+                                    : effectiveDayColGap,
                               ),
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
                                   return Stack(
                                     children: [
                                       ...ticks.map((tick) {
-                                        final top = (tick - globalMin) * _ppm;
+                                        final top =
+                                            (tick - globalMin) *
+                                            pixelsPerMinute;
                                         return Positioned(
                                           top: top,
                                           left: 0,
@@ -4231,10 +3878,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         final holidayEndMin = _toMinutes(1800);
                                         final top2 =
                                             (holidayStartMin - globalMin) *
-                                            _ppm;
+                                            pixelsPerMinute;
                                         final height2 =
                                             ((holidayEndMin - holidayStartMin) *
-                                                    _ppm)
+                                                    pixelsPerMinute)
                                                 .clamp(24.0, 9999.0);
                                         final holidayName =
                                             (holiday['longName'] ??
@@ -4295,15 +3942,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         final startMin = slot.startMin;
                                         final endMin = slot.endMin;
                                         final top =
-                                            (startMin - globalMin) * _ppm;
+                                            (startMin - globalMin) *
+                                            pixelsPerMinute;
                                         final height =
-                                            ((endMin - startMin) * _ppm).clamp(
-                                              24.0,
-                                              9999.0,
-                                            );
-                                        final dim =
-                                            (dayIndex == todayIndex) &&
-                                            endMin <= nowMin;
+                                            ((endMin - startMin) *
+                                                    pixelsPerMinute)
+                                                .clamp(24.0, 9999.0);
+                                        final dayOnly = mondayDate.add(Duration(days: dayIndex));
+                                        final dim = isTimetableLessonPast(
+                                          dayDate: dayOnly,
+                                          endMin: endMin,
+                                          now: today,
+                                        );
                                         const horizontalInset = 1.0;
                                         const columnGap = 2.0;
                                         final columns = slot.columnCount;
@@ -4358,8 +4008,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                         ? l['_subjectLong']
                                                               .toString()
                                                         : '?');
+                                              final rawRoom =
+                                                  (l['_room']?.toString() ?? '')
+                                                      .trim();
                                               final room =
-                                                  l['_room']?.toString() ?? '';
+                                                  rawRoom == '?'
+                                                      ? ''
+                                                      : rawRoom;
                                               final teacher = _displayTeacher(
                                                 l,
                                               );
@@ -4500,6 +4155,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                   hasExam: hasExam,
                                                   originalTeacher:
                                                       originalTeacher,
+                                                  onTap: () =>
+                                                      _onLessonTap(context, l),
+                                                  onLongPress: () =>
+                                                      _editLessonTemporarily(l),
                                                   padding:
                                                       const EdgeInsets.fromLTRB(
                                                         8,
@@ -4531,58 +4190,65 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       }),
                                       if (showNowLine && dayIndex == todayIndex)
                                         Positioned(
-                                          top: nowTop - 1.5,
+                                          top: lessonExpressiveDesignNotifier.value
+                                              ? nowTop - 6
+                                              : nowTop - 1.5,
                                           left: 0,
                                           right: 0,
                                           child: IgnorePointer(
-                                            child: Row(
-                                              children: [
-                                                Container(
-                                                  width: 5,
-                                                  height: 5,
-                                                  decoration: BoxDecoration(
-                                                    color: cs.error,
-                                                    shape: BoxShape.circle,
-                                                    boxShadow:
-                                                        _glowShadows(context, [
-                                                          BoxShadow(
-                                                            color: cs.error
-                                                                .withValues(
-                                                                  alpha: 0.35,
+                                            child: lessonExpressiveDesignNotifier.value
+                                                ? ExpressiveNowWaveIndicator(
+                                                    color: cs.primary,
+                                                    height: 12,
+                                                  )
+                                                : Row(
+                                                    children: [
+                                                      Container(
+                                                        width: 5,
+                                                        height: 5,
+                                                        decoration: BoxDecoration(
+                                                          color: cs.error,
+                                                          shape: BoxShape.circle,
+                                                          boxShadow:
+                                                              _glowShadows(context, [
+                                                                BoxShadow(
+                                                                  color: cs.error
+                                                                      .withValues(
+                                                                        alpha: 0.35,
+                                                                      ),
+                                                                  blurRadius: 3,
+                                                                  spreadRadius: 0.5,
                                                                 ),
-                                                            blurRadius: 3,
-                                                            spreadRadius: 0.5,
-                                                          ),
-                                                        ]),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Expanded(
-                                                  child: Container(
-                                                    height: 2,
-                                                    decoration: BoxDecoration(
-                                                      color: cs.error,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            2,
-                                                          ),
-                                                      boxShadow: _glowShadows(
-                                                        context,
-                                                        [
-                                                          BoxShadow(
-                                                            color: cs.error
-                                                                .withValues(
-                                                                  alpha: 0.25,
-                                                                ),
-                                                            blurRadius: 3,
-                                                          ),
-                                                        ],
+                                                              ]),
+                                                        ),
                                                       ),
-                                                    ),
+                                                      const SizedBox(width: 6),
+                                                      Expanded(
+                                                        child: Container(
+                                                          height: 2,
+                                                          decoration: BoxDecoration(
+                                                            color: cs.error,
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  2,
+                                                                ),
+                                                            boxShadow: _glowShadows(
+                                                              context,
+                                                              [
+                                                                BoxShadow(
+                                                                  color: cs.error
+                                                                      .withValues(
+                                                                        alpha: 0.25,
+                                                                      ),
+                                                                  blurRadius: 3,
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
-                                                ),
-                                              ],
-                                            ),
                                           ),
                                         ),
                                     ],
@@ -4672,6 +4338,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       if (!isCurrentRequest()) return;
       setState(() {
         _weekData = tempWeek;
+        _displayedMonday = requestedMonday;
         _showingCachedWeek = false;
         _loading = false;
         _loadError = null;
@@ -4692,11 +4359,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       return;
     }
 
-    final hasExistingWeek = _weekData.values.any((l) => l.isNotEmpty);
+    final hasExistingWeek =
+        _displayedMonday == requestedMonday &&
+        _weekData.values.any((l) => l.isNotEmpty);
     final cachedWeek = (!silent || !hasExistingWeek)
         ? await _loadWeekFromCache(
             requestPersonId: requestPersonId,
             requestPersonType: requestPersonType,
+            monday: requestedMonday,
           )
         : null;
     if (!isCurrentRequest()) return;
@@ -4709,6 +4379,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       _applyKnownSubjectsFromWeek(cachedWeek);
       setState(() {
         _weekData = cachedWeek;
+        _displayedMonday = requestedMonday;
         _showingCachedWeek = true;
         _loading = false;
         _loadError = null;
@@ -4721,6 +4392,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       unawaited(_prefetchAdjacentWeeks(allowNetwork: false));
     } else if (!silent && mounted && !hasCachedWeek) {
       setState(() {
+        _weekData = _emptyWeekData();
+        _displayedMonday = requestedMonday;
+        _showingCachedWeek = false;
         _loading = true;
         _loadError = null;
       });
@@ -4732,11 +4406,38 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     if ((_currentSessionId.isEmpty || _isSessionExpired()) && !isDemoMode) {
       final ok = await _reAuthenticate();
-      if (!ok && !hasCachedWeek) {
+      if (!ok) {
+        if (hasCachedWeek || _weekData.values.any((l) => l.isNotEmpty)) {
+          if (!mounted) return;
+          setState(() {
+            _showingCachedWeek = true;
+            _loading = false;
+            _loadError = null;
+          });
+          return;
+        }
+        final fallback = await _loadWeekFromCache(
+          requestPersonId: requestPersonId,
+          requestPersonType: requestPersonType,
+          monday: requestedMonday,
+        );
+        if (fallback != null && fallback.values.any((l) => l.isNotEmpty)) {
+          if (!mounted) return;
+          _applyKnownSubjectsFromWeek(fallback);
+          setState(() {
+            _weekData = fallback;
+            _displayedMonday = requestedMonday;
+            _showingCachedWeek = true;
+            _loading = false;
+            _loadError = null;
+          });
+          return;
+        }
         if (!mounted) return;
         setState(() {
           _loadError = l.timetableNotSignedIn;
           _weekData = _emptyWeekData();
+          _displayedMonday = requestedMonday;
           _showingCachedWeek = false;
           _loading = false;
         });
@@ -4868,12 +4569,30 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           .expand((day) => day)
           .where((l) => ((l['_teacher'] ?? '').toString().trim().isEmpty))
           .toList();
-      if (missingTeacherLessons.isNotEmpty) {
-        // Resolve the data snapshot before it becomes visible. A week must
-        // never repaint merely because its teacher directory arrived later.
-        await _resolveMissingTeachers(
+      final missingSubjectLessons = tempWeek.values
+          .expand((day) => day)
+          .where((l) {
+            final s = (l['_subjectShort'] ?? '').toString().trim();
+            return s.isEmpty || s == '?';
+          })
+          .toList();
+      final missingRoomLessons = tempWeek.values
+          .expand((day) => day)
+          .where((l) {
+            final r = (l['_room'] ?? '').toString().trim();
+            return r.isEmpty || r == '?';
+          })
+          .toList();
+
+      if (missingTeacherLessons.isNotEmpty ||
+          missingSubjectLessons.isNotEmpty ||
+          missingRoomLessons.isNotEmpty) {
+        // Resolve the data snapshot before it becomes visible.
+        await _resolveMissingLessonDetails(
           tempWeek: tempWeek,
           missingTeacherLessons: missingTeacherLessons,
+          missingSubjectLessons: missingSubjectLessons,
+          missingRoomLessons: missingRoomLessons,
           requestGeneration: requestGeneration,
           requestedMonday: requestedMonday,
           requestAccountId: requestAccountId,
@@ -4888,6 +4607,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       _applyKnownSubjectsFromWeek(tempWeek);
       setState(() {
         _weekData = tempWeek;
+        _displayedMonday = requestedMonday;
         _showingCachedWeek = false;
         _loading = false;
         _loadError = null;
@@ -4966,7 +4686,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
 
       if (!isCurrentRequest()) return;
-      if (hasCachedWeek) {
+      if (hasCachedWeek || _weekData.values.any((l) => l.isNotEmpty)) {
         if (!mounted) return;
         setState(() {
           _loadError = null;
@@ -4976,11 +4696,31 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         return;
       }
 
+      final fallbackAfterApiError = await _loadWeekFromCache(
+        requestPersonId: requestPersonId,
+        requestPersonType: requestPersonType,
+        monday: requestedMonday,
+      );
+      if (fallbackAfterApiError != null &&
+          fallbackAfterApiError.values.any((l) => l.isNotEmpty)) {
+        if (!mounted) return;
+        _applyKnownSubjectsFromWeek(fallbackAfterApiError);
+        setState(() {
+          _weekData = fallbackAfterApiError;
+          _displayedMonday = requestedMonday;
+          _showingCachedWeek = true;
+          _loading = false;
+          _loadError = null;
+        });
+        return;
+      }
+
       if (_isNoAllowedDateError(apiMsg)) {
         if (!mounted) return;
         setState(() {
           _loadError = null;
           _weekData = _emptyWeekData();
+          _displayedMonday = requestedMonday;
           _showingCachedWeek = false;
           _loading = false;
         });
@@ -4993,18 +4733,38 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             ? l.timetableHttpError(e.statusCode!)
             : apiMsg;
         _weekData = _emptyWeekData();
+        _displayedMonday = requestedMonday;
         _showingCachedWeek = false;
         _loading = false;
       });
     } catch (e) {
       debugPrint("Fehler beim Laden: $e");
       if (!isCurrentRequest()) return;
-      if (hasCachedWeek) {
+      if (hasCachedWeek || _weekData.values.any((l) => l.isNotEmpty)) {
         if (!mounted) return;
         setState(() {
           _loadError = null;
           _showingCachedWeek = true;
           _loading = false;
+        });
+        return;
+      }
+
+      final fallbackAfterError = await _loadWeekFromCache(
+        requestPersonId: requestPersonId,
+        requestPersonType: requestPersonType,
+        monday: requestedMonday,
+      );
+      if (fallbackAfterError != null &&
+          fallbackAfterError.values.any((l) => l.isNotEmpty)) {
+        if (!mounted) return;
+        _applyKnownSubjectsFromWeek(fallbackAfterError);
+        setState(() {
+          _weekData = fallbackAfterError;
+          _displayedMonday = requestedMonday;
+          _showingCachedWeek = true;
+          _loading = false;
+          _loadError = null;
         });
         return;
       }
@@ -5015,6 +4775,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         setState(() {
           _loadError = null;
           _weekData = _emptyWeekData();
+          _displayedMonday = requestedMonday;
           _showingCachedWeek = false;
           _loading = false;
         });
@@ -5025,15 +4786,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       setState(() {
         _loadError = l.timetableLoadError;
         _weekData = _emptyWeekData();
+        _displayedMonday = requestedMonday;
         _showingCachedWeek = false;
         _loading = false;
       });
     }
   }
 
-  Future<void> _resolveMissingTeachers({
+  Future<void> _resolveMissingLessonDetails({
     required Map<int, List<dynamic>> tempWeek,
     required List<dynamic> missingTeacherLessons,
+    required List<dynamic> missingSubjectLessons,
+    required List<dynamic> missingRoomLessons,
     required int requestGeneration,
     required DateTime requestedMonday,
     required String requestAccountId,
@@ -5053,9 +4817,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     final exactKeyToTeacher = <String, String>{};
     final looseKeyToTeacher = <String, String>{};
+    final exactKeyToSubjectShort = <String, String>{};
+    final looseKeyToSubjectShort = <String, String>{};
+    final exactKeyToSubjectLong = <String, String>{};
+    final looseKeyToSubjectLong = <String, String>{};
+    final exactKeyToRoom = <String, String>{};
+    final looseKeyToRoom = <String, String>{};
 
-    // Fallback 1: Public weekly endpoint often contains teacher IDs in
-    // period elements (type=2) even when JSON-RPC omits `te`.
+    // Fallback 1: Public weekly endpoint often contains element and period
+    // metadata even when JSON-RPC master endpoints fail or omit data.
     try {
       final data = await _timetableRepository.fetchPublicWeeklyData(
         context: _timetableRequestContext,
@@ -5065,21 +4835,44 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       );
       if (data != null) {
         final elements = (data['elements'] as List?) ?? const <dynamic>[];
+        _populateMasterDataFromPublicElements(elements);
+
         final teacherNameById = <int, String>{};
+        final subjectShortById = <int, String>{};
+        final subjectLongById = <int, String>{};
+        final roomNameById = <int, String>{};
+
         for (final e in elements) {
           if (e is! Map) continue;
-          if ((e['type'] as int?) != 2) continue;
-          final id = e['id'] as int?;
-          if (id == null) continue;
-          final n =
-              (e['longName'] ??
-                      e['longname'] ??
-                      e['displayname'] ??
-                      e['name'] ??
-                      '')
-                  .toString()
-                  .trim();
-          if (n.isNotEmpty) teacherNameById[id] = n;
+          final type = asIntOrNull(e['type']);
+          final id = asIntOrNull(e['id']);
+          if (type == null || id == null) continue;
+          final name = (e['name'] ?? e['shortName'] ?? '').toString().trim();
+          final longName = (e['longName'] ??
+                  e['longname'] ??
+                  e['displayName'] ??
+                  name)
+              .toString()
+              .trim();
+
+          if (type == 2) {
+            final fore =
+                (e['foreName'] ?? e['forename'] ?? '').toString().trim();
+            final full = fore.isNotEmpty
+                ? '$fore $longName'
+                : (longName.isNotEmpty ? longName : name);
+            if (full.isNotEmpty) teacherNameById[id] = full;
+          } else if (type == 3) {
+            if (name.isNotEmpty) subjectShortById[id] = name;
+            if (longName.isNotEmpty) {
+              subjectLongById[id] = longName;
+            } else if (name.isNotEmpty) {
+              subjectLongById[id] = name;
+            }
+          } else if (type == 4) {
+            final roomName = name.isNotEmpty ? name : longName;
+            if (roomName.isNotEmpty) roomNameById[id] = roomName;
+          }
         }
 
         final elementPeriods = (data['elementPeriods'] as Map?) ?? const {};
@@ -5100,14 +4893,26 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             if (t == 3 && id != null) subjectId ??= id;
             if (t == 4 && id != null) roomId ??= id;
             if (t == 2 && id != null) {
-              final tn = teacherNameById[id];
+              final tn = teacherNameById[id] ?? _teacherMap[id];
               if (tn != null && tn.isNotEmpty && !teacherNames.contains(tn)) {
                 teacherNames.add(tn);
               }
             }
           }
           final teacherJoined = teacherNames.join(', ');
-          if (teacherJoined.isEmpty || subjectId == null) continue;
+          final subShort = subjectId != null
+              ? (subjectShortById[subjectId] ??
+                  _subjectShortMap[subjectId] ??
+                  '')
+              : '';
+          final subLong = subjectId != null
+              ? (subjectLongById[subjectId] ??
+                  _subjectLong[subjectId] ??
+                  subShort)
+              : '';
+          final roName = roomId != null
+              ? (roomNameById[roomId] ?? _roomMap[roomId] ?? '')
+              : '';
 
           final exactKey = _lessonTeacherKeyFromParts(
             date: p['date'],
@@ -5124,8 +4929,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             subjectId: subjectId,
             withRoom: false,
           );
-          exactKeyToTeacher.putIfAbsent(exactKey, () => teacherJoined);
-          looseKeyToTeacher.putIfAbsent(looseKey, () => teacherJoined);
+
+          if (teacherJoined.isNotEmpty) {
+            exactKeyToTeacher.putIfAbsent(exactKey, () => teacherJoined);
+            looseKeyToTeacher.putIfAbsent(looseKey, () => teacherJoined);
+          }
+          if (subShort.isNotEmpty) {
+            exactKeyToSubjectShort.putIfAbsent(exactKey, () => subShort);
+            looseKeyToSubjectShort.putIfAbsent(looseKey, () => subShort);
+          }
+          if (subLong.isNotEmpty) {
+            exactKeyToSubjectLong.putIfAbsent(exactKey, () => subLong);
+            looseKeyToSubjectLong.putIfAbsent(looseKey, () => subLong);
+          }
+          if (roName.isNotEmpty) {
+            exactKeyToRoom.putIfAbsent(exactKey, () => roName);
+            looseKeyToRoom.putIfAbsent(looseKey, () => roName);
+          }
         }
       }
     } catch (_) {}
@@ -5133,15 +4953,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     if (!isCurrent()) return;
 
     // Fallback 2: Query related class timetables and try key matching.
-    final stillMissing = missingTeacherLessons.any((l) {
+    final stillMissingTeachers = missingTeacherLessons.any((l) {
       if (l is! Map) return false;
       final lMap = Map<dynamic, dynamic>.from(l);
       final exact = exactKeyToTeacher[_lessonTeacherKey(lMap, withRoom: true)];
-      final loose = looseKeyToTeacher[_lessonTeacherKey(lMap, withRoom: false)];
+      final loose =
+          looseKeyToTeacher[_lessonTeacherKey(lMap, withRoom: false)];
       return (exact ?? loose ?? '').isEmpty;
     });
 
-    if (stillMissing && classIdsInWeek.isNotEmpty) {
+    if (stillMissingTeachers && classIdsInWeek.isNotEmpty) {
       final classesToQuery = classIdsInWeek.take(6);
       await Future.wait(
         classesToQuery.map((classId) async {
@@ -5176,11 +4997,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     if (!isCurrent()) return;
 
     var updatedAny = false;
+
+    // Apply resolved teachers
     for (final l in missingTeacherLessons) {
       if (l is! Map) continue;
       final lMap = Map<dynamic, dynamic>.from(l);
       final exact = exactKeyToTeacher[_lessonTeacherKey(lMap, withRoom: true)];
-      final loose = looseKeyToTeacher[_lessonTeacherKey(lMap, withRoom: false)];
+      final loose =
+          looseKeyToTeacher[_lessonTeacherKey(lMap, withRoom: false)];
       final fallbackTeacher = exact ?? loose ?? '';
       if (fallbackTeacher.isNotEmpty && l['_teacher'] != fallbackTeacher) {
         l['_teacher'] = fallbackTeacher;
@@ -5188,10 +5012,62 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
     }
 
-    // The caller publishes this complete snapshot atomically. Keeping this
-    // method mutation-only prevents delayed teacher lookups from refreshing a
-    // different week after the user has already switched away.
-    if (updatedAny && !isCurrent()) return;
+    // Apply resolved subjects
+    for (final l in missingSubjectLessons) {
+      if (l is! Map) continue;
+      final lMap = Map<dynamic, dynamic>.from(l);
+      final subId = (l['su'] as List?)?.firstOrNull?['id'] as int?;
+      final exactShort =
+          exactKeyToSubjectShort[_lessonTeacherKey(lMap, withRoom: true)];
+      final looseShort =
+          looseKeyToSubjectShort[_lessonTeacherKey(lMap, withRoom: false)];
+      final mappedShort = subId != null ? _subjectShortMap[subId] : null;
+      final resolvedShort = exactShort ?? looseShort ?? mappedShort ?? '';
+
+      final exactLong =
+          exactKeyToSubjectLong[_lessonTeacherKey(lMap, withRoom: true)];
+      final looseLong =
+          looseKeyToSubjectLong[_lessonTeacherKey(lMap, withRoom: false)];
+      final mappedLong = subId != null ? _subjectLong[subId] : null;
+      final resolvedLong =
+          exactLong ?? looseLong ?? mappedLong ?? resolvedShort;
+
+      if (resolvedShort.isNotEmpty &&
+          (l['_subjectShort'] == null ||
+              l['_subjectShort'] == '' ||
+              l['_subjectShort'] == '?')) {
+        l['_subjectShort'] = resolvedShort;
+        updatedAny = true;
+      }
+      if (resolvedLong.isNotEmpty &&
+          (l['_subjectLong'] == null ||
+              l['_subjectLong'] == '' ||
+              l['_subjectLong'] == '?')) {
+        l['_subjectLong'] = resolvedLong;
+        updatedAny = true;
+      }
+    }
+
+    // Apply resolved rooms
+    for (final l in missingRoomLessons) {
+      if (l is! Map) continue;
+      final lMap = Map<dynamic, dynamic>.from(l);
+      final roId = (l['ro'] as List?)?.firstOrNull?['id'] as int?;
+      final exactRoom = exactKeyToRoom[_lessonTeacherKey(lMap, withRoom: true)];
+      final looseRoom = looseKeyToRoom[_lessonTeacherKey(lMap, withRoom: false)];
+      final mappedRoom = roId != null ? _roomMap[roId] : null;
+      final resolvedRoom = exactRoom ?? looseRoom ?? mappedRoom ?? '';
+
+      if (resolvedRoom.isNotEmpty &&
+          (l['_room'] == null || l['_room'] == '' || l['_room'] == '?')) {
+        l['_room'] = resolvedRoom;
+        updatedAny = true;
+      }
+    }
+
+    if (updatedAny) {
+      unawaited(_saveMasterDataToCache());
+    }
   }
 
   Future<void> _openClassSearch() async {
@@ -5260,7 +5136,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               maxChildSize: 0.9,
               expand: false,
               builder: (_, scrollController) {
-                return _glassContainer(
+                return _sheetSurface(
                   context: ctx,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(32),
@@ -5415,7 +5291,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               final isDefault = defaultClassId == id;
 
                               return _springEntry(
-                                duration: Duration(milliseconds: 300 + i * 45),
+                                duration: Duration(
+                                  milliseconds: (300 + i * 35)
+                                      .clamp(300, 520)
+                                      .toInt(),
+                                ),
                                 offsetY: 16,
                                 startScale: 0.95,
                                 curve: _kSmoothBounce,
@@ -5626,6 +5506,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
+  Future<void> _openRoomSearch() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const RoomSearchPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
@@ -5634,7 +5520,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         .toInt();
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Colors.transparent,
       appBar: RoundedBlurAppBar(
         leading: _untisDropdownMenu(
           context: context,
@@ -5650,9 +5536,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               child: Text(l.timetableSelectAnother),
             ),
             MenuItemButton(
-              leadingIcon: const Icon(Icons.meeting_room_outlined),
-              onPressed: _showFreeRoomsDialog,
-              child: Text(l.freeRoomsTitle),
+              leadingIcon: const Icon(Icons.meeting_room_rounded),
+              onPressed: _openRoomSearch,
+              child: Text(l.roomSearchTitle),
             ),
             MenuItemButton(
               leadingIcon: const Icon(Icons.ios_share_rounded),
@@ -5671,7 +5557,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           onTap: () {
             final thisMonday = resolveDefaultTimetableMonday(DateTime.now());
             if (_currentMonday != thisMonday) {
-              HapticFeedback.selectionClick();
+              AppHaptics.selection();
               setState(() => _currentMonday = thisMonday);
               _fetchFullWeek();
             }
@@ -5679,13 +5565,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                _viewingClassName ?? l.timetableTitle,
-                style: untisThemeTextStyle(
-                  context,
-                  display: true,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 17,
+              Flexible(
+                child: Text(
+                  _viewingClassName ?? l.timetableTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: untisThemeTextStyle(
+                    context,
+                    display: true,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 17,
+                  ),
                 ),
               ),
               AnimatedSwitcher(
@@ -5710,13 +5600,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           message: l.timetableOfflineCache,
                           child: Padding(
                             padding: const EdgeInsets.only(left: 8, top: 2),
-                            child: RotationTransition(
-                              turns: _cacheRefreshController,
-                              child: Icon(
-                                Icons.sync_rounded,
-                                size: 18,
-                                color: Theme.of(context).colorScheme.tertiary,
-                              ),
+                            child: _CacheRefreshIcon(
+                              color: Theme.of(context).colorScheme.tertiary,
                             ),
                           ),
                         ),
@@ -5749,12 +5634,38 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(kTextTabBarHeight),
+          preferredSize: Size.fromHeight(_dayTabsHeight),
           child: SizedBox(
-            height: kTextTabBarHeight,
+            height: _dayTabsHeight,
             child: Stack(
               fit: StackFit.expand,
+              clipBehavior: Clip.none,
               children: [
+                IgnorePointer(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final tabWidth = constraints.maxWidth / 5;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          AnimatedPositioned(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOutCubic,
+                            left:
+                                (tabWidth * dayIndicatorIndex) +
+                                ((tabWidth - 38) / 2),
+                            top: 2,
+                            width: 38,
+                            height: 32,
+                            child: _DayTabGlowIndicator(
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
                 AbsorbPointer(
                   absorbing:
                       _isDayCarouselAnimating || _isWeekCarouselAnimating,
@@ -5763,6 +5674,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     onTap: _onDayTabBarTap,
                     indicator: const BoxDecoration(),
                     indicatorWeight: 0,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 2),
                     labelStyle: untisThemeTextStyle(
                       context,
                       fontWeight: FontWeight.bold,
@@ -5783,11 +5695,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           dayDate.month == now.month &&
                           dayDate.day == now.day;
                       return Tab(
+                        height: _dayTabsHeight,
                         child: GestureDetector(
                           key: ValueKey('timetable-day-tab-$i'),
                           behavior: HitTestBehavior.opaque,
                           onLongPress: () {
-                            HapticFeedback.mediumImpact();
+                            AppHaptics.confirmation();
                             _showDateAlarmActions(dayDate);
                           },
                           child: Column(
@@ -5874,106 +5787,853 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     }),
                   ),
                 ),
-                IgnorePointer(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final tabWidth = constraints.maxWidth / 5;
-                      return Stack(
-                        children: [
-                          AnimatedPositioned(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOutCubic,
-                            left:
-                                (tabWidth * dayIndicatorIndex) +
-                                ((tabWidth - 38) / 2),
-                            bottom: 0,
-                            width: 38,
-                            height: 3,
-                            child: ColoredBox(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
               ],
             ),
           ),
         ),
       ),
-      body: _AnimatedBackground(
-        child:
-            (_loading &&
+      body:
+          (_loading &&
+              _weekData.values.every((list) => list.isEmpty) &&
+              !_showingCachedWeek)
+          ? const Center(child: CircularProgressIndicator())
+          : (_loadError != null &&
                 _weekData.values.every((list) => list.isEmpty) &&
                 !_showingCachedWeek)
-            ? const Center(child: CircularProgressIndicator())
-            : (_loadError != null &&
-                  _weekData.values.every((list) => list.isEmpty) &&
-                  !_showingCachedWeek)
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.cloud_off_rounded,
-                        size: 80,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.cloud_off_rounded,
+                      size: 80,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      l.timetableNotLoaded,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        l.timetableNotLoaded,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _loadError!,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _loadError!,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      FilledButton.tonal(
-                        onPressed: _fetchFullWeek,
-                        child: Text(l.reload),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : RepaintBoundary(
-                key: _timetableExportKey,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 500),
-                  reverseDuration: const Duration(milliseconds: 400),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) => SizeTransition(
-                    sizeFactor: animation,
-                    axis: Axis.vertical,
-                    alignment: Alignment.topCenter,
-                    child: FadeTransition(opacity: animation, child: child),
-                  ),
-                  child: KeyedSubtree(
-                    key: ValueKey<int>(_viewMode),
-                    child: _buildTimetableSwitcher(),
-                  ),
+                    ),
+                    const SizedBox(height: 18),
+                    FilledButton.tonal(
+                      onPressed: _fetchFullWeek,
+                      child: Text(l.reload),
+                    ),
+                  ],
                 ),
               ),
+            )
+          : _isExportingTimetable
+          ? RepaintBoundary(
+              key: _timetableExportKey,
+              child: _buildTimetableSwitcher(),
+            )
+          : Column(
+              children: [
+                if (_showingCachedWeek) _buildOfflineNoticeBanner(l),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: AppMotion.duration(
+                      context,
+                      const Duration(milliseconds: 560),
+                    ),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    layoutBuilder: (currentChild, previousChildren) => Stack(
+                      alignment: Alignment.topCenter,
+                      fit: StackFit.passthrough,
+                      children: <Widget>[...previousChildren, ?currentChild],
+                    ),
+                    transitionBuilder: (child, animation) {
+                      final curved = CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeInOutCubic,
+                      );
+                      return FadeTransition(
+                        opacity: curved,
+                        child: AnimatedBuilder(
+                          animation: curved,
+                          child: child,
+                          builder: (context, child) => Transform.translate(
+                            offset: Offset(0, 8 * (1 - curved.value)),
+                            child: Transform.scale(
+                              alignment: Alignment.topCenter,
+                              scale: 0.985 + (0.015 * curved.value),
+                              child: child,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    child: KeyedSubtree(
+                      key: ValueKey<int>(_viewMode),
+                      child: _buildTimetableSwitcher(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildOfflineNoticeBanner(AppL10n l) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Container(
+      key: const ValueKey('timetable-offline-banner'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      margin: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+        ),
       ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.cloud_off_rounded,
+            size: 16,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l.timetableOfflineNotice,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CacheRefreshIcon extends StatefulWidget {
+  const _CacheRefreshIcon({required this.color});
+
+  final Color color;
+
+  @override
+  State<_CacheRefreshIcon> createState() => _CacheRefreshIconState();
+}
+
+class _CacheRefreshIconState extends State<_CacheRefreshIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (AppMotion.enabled(context)) {
+      if (!_controller.isAnimating) _controller.repeat();
+    } else {
+      _controller.stop(canceled: false);
+      _controller.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => RotationTransition(
+    turns: _controller,
+    child: Icon(Icons.sync_rounded, size: 18, color: widget.color),
+  );
+}
+
+class _DayTabGlowIndicator extends StatelessWidget {
+  const _DayTabGlowIndicator({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.topCenter,
+      children: [
+        // Ultra-soft diffuse Gaussian glow bloom (no hard edges or visible container borders)
+        Positioned(
+          top: 0,
+          width: 38,
+          height: 3,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(1.5),
+              boxShadow: _glowShadows(context, [
+                // Deep atmospheric aura fading downwards
+                BoxShadow(
+                  color: color.withValues(alpha: 0.22),
+                  blurRadius: 28,
+                  spreadRadius: 6,
+                  offset: const Offset(0, 10),
+                ),
+                // Medium ambient soft glow
+                BoxShadow(
+                  color: color.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 5),
+                ),
+                // Core light right at the bar
+                BoxShadow(
+                  color: color.withValues(alpha: 0.50),
+                  blurRadius: 8,
+                  spreadRadius: 0.5,
+                  offset: const Offset(0, 2),
+                ),
+              ]),
+            ),
+          ),
+        ),
+        // Rounded solid indicator bar (sleek 3dp bar with subtle 1.5 radius)
+        Positioned(
+          top: 0,
+          width: 38,
+          height: 3,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(1.5),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class TimetableLessonCard extends StatelessWidget {
+  final bool isCancelled;
+  final bool isSubstitution;
+  final bool isDark;
+  final Color fgColor;
+  final Color bgColor;
+  final String subject;
+  final String teacher;
+  final String room;
+  final bool isNow;
+  final IconData? subjectIcon;
+  final bool isTeacherMissing;
+  final bool hasHomework;
+  final bool hasExam;
+  final String originalTeacher;
+  final double? borderRadius;
+  final EdgeInsets? padding;
+  final double accentWidth;
+  final double subjectFontSize;
+  final double teacherFontSize;
+  final double roomFontSize;
+  final bool useStripes;
+  final double? availableWidth;
+  final double? availableHeight;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  const TimetableLessonCard({
+    super.key,
+    required this.isCancelled,
+    this.isSubstitution = false,
+    required this.isDark,
+    required this.fgColor,
+    required this.bgColor,
+    required this.subject,
+    required this.teacher,
+    required this.room,
+    required this.isNow,
+    this.subjectIcon,
+    this.isTeacherMissing = false,
+    this.hasHomework = false,
+    this.hasExam = false,
+    this.originalTeacher = '',
+    this.borderRadius,
+    this.padding,
+    this.accentWidth = 3.5,
+    this.subjectFontSize = 11.5,
+    this.teacherFontSize = 9.5,
+    this.roomFontSize = 9.5,
+    this.useStripes = true,
+    this.availableWidth,
+    this.availableHeight,
+    this.onTap,
+    this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (lessonExpressiveDesignNotifier.value) {
+      final variant = ExpressiveShapeVariant.fromKey(subject);
+      final tone = ExpressiveTone.resolve(
+        customColor: fgColor,
+        isDark: isDark,
+        isCancelled: isCancelled,
+        subjectKey: subject,
+      );
+      return ExpressiveLessonCard(
+        subject: subject,
+        teacher: teacher,
+        room: room,
+        isCancelled: isCancelled,
+        isNow: isNow,
+        isSubstitution: isSubstitution,
+        hasHomework: hasHomework,
+        hasExam: hasExam,
+        isTeacherMissing: isTeacherMissing,
+        shapeVariant: variant,
+        tone: tone,
+        fgColor: fgColor,
+        bgColor: bgColor,
+        isDark: isDark,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        availableWidth: availableWidth,
+        availableHeight: availableHeight,
+        subjectIcon: subjectIcon,
+      );
+    }
+
+    final tokens = untisThemeTokensOf(context);
+    final isClean = lessonCleanDesignNotifier.value;
+    final effectiveAccentWidthProp = isClean
+        ? (accentWidth * 0.7).clamp(1.8, 2.5)
+        : accentWidth;
+    final visuals = LessonCardVisualsResolver.resolve(
+      context: context,
+      tokens: tokens,
+      isDark: isDark,
+      isCancelled: isCancelled,
+      isNow: isNow,
+      foregroundColor: fgColor,
+      backgroundColor: bgColor,
+      isTeacherMissing: isTeacherMissing,
+      usePattern: useStripes,
+      borderRadius: borderRadius,
+      accentWidth: effectiveAccentWidthProp,
+    );
+    final effectiveRadius = visuals.radius;
+    final cardRadius = visuals.borderRadius;
+    final blurEnabled = visuals.blurEnabled;
+    final blurSigma = visuals.blurSigma;
+    final accentStyle = visuals.accentStyle;
+    final showPattern = visuals.showPattern;
+    final showTeacher = lessonShowTeacherNotifier.value;
+    final showRoom = lessonShowRoomNotifier.value;
+    final isSubstituted =
+        showTeacher && originalTeacher.isNotEmpty && originalTeacher != teacher;
+    final compact = lessonCompactModeNotifier.value;
+
+    final heightCompact = availableHeight != null && availableHeight! < 58;
+    final heightMinimal = availableHeight != null && availableHeight! < 40;
+    final widthCompact = availableWidth != null && availableWidth! < 54;
+    final effectivePadding = heightMinimal
+        ? const EdgeInsets.fromLTRB(5, 2, 4, 2)
+        : heightCompact
+        ? const EdgeInsets.fromLTRB(6, 3, 5, 3)
+        : padding != null
+        ? (compact
+              ? EdgeInsets.fromLTRB(
+                  padding!.left.clamp(3.0, 6.0),
+                  (padding!.top * 0.7).clamp(2.0, 5.0),
+                  padding!.right.clamp(3.0, 6.0),
+                  (padding!.bottom * 0.7).clamp(2.0, 5.0),
+                )
+              : padding!)
+        : (compact
+              ? const EdgeInsets.fromLTRB(6, 3, 5, 3)
+              : const EdgeInsets.fromLTRB(8, 5, 6, 5));
+
+    final effectiveSubjectFontSize = compact || widthCompact || heightCompact
+        ? (subjectFontSize * 0.92).clamp(8.5, 14.0)
+        : subjectFontSize;
+    final effectiveTeacherFontSize = compact
+        ? (teacherFontSize * 0.90).clamp(7.5, 12.0)
+        : teacherFontSize;
+    final effectiveRoomFontSize = compact
+        ? (roomFontSize * 0.90).clamp(7.5, 12.0)
+        : roomFontSize;
+
+    final shadows = visuals.shadows;
+    final effectiveFillColor = visuals.fillColor;
+    final effectiveGradient = visuals.gradient;
+    final effectiveBorder = visuals.border;
+    final effectiveTextColor = visuals.textColor;
+    final effectiveSecondaryTextColor = visuals.secondaryTextColor;
+    final effectiveAccentWidth = visuals.accentWidth;
+
+    Widget cardContent = Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: effectiveFillColor,
+            gradient: effectiveGradient,
+            borderRadius: cardRadius,
+            border: effectiveBorder,
+          ),
+        ),
+        if (showPattern)
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _StripedHatchPainter(
+                color: fgColor.withValues(alpha: isDark ? 0.18 : 0.12),
+                stripeWidth: 2.0,
+                gap: 7.0,
+              ),
+            ),
+          ),
+        if (accentStyle == 0 || accentStyle == 1)
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: effectiveAccentWidth,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [fgColor, fgColor.withValues(alpha: 0.7)],
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(effectiveRadius),
+                  bottomLeft: Radius.circular(effectiveRadius),
+                ),
+              ),
+            ),
+          ),
+        if (isClean && subjectIcon != null)
+          Positioned(
+            right: -4,
+            top: -2,
+            bottom: -2,
+            child: IgnorePointer(
+              child: ShaderMask(
+                key: const ValueKey('lesson-watermark-icon'),
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (bounds) {
+                  return const LinearGradient(
+                    begin: Alignment.centerRight,
+                    end: Alignment.centerLeft,
+                    colors: [Colors.white, Colors.transparent],
+                    stops: [0.15, 0.95],
+                  ).createShader(bounds);
+                },
+                child: Icon(
+                  subjectIcon,
+                  size: ((availableHeight ?? 75.0) * 0.92).clamp(32.0, 72.0),
+                  color: fgColor.withValues(alpha: isDark ? 0.22 : 0.17),
+                ),
+              ),
+            ),
+          ),
+        Padding(
+          padding: effectivePadding,
+          child: isClean
+              ? _buildCleanContent(
+                  context: context,
+                  accentStyle: accentStyle,
+                  fgColor: fgColor,
+                  effectiveRadius: effectiveRadius,
+                  effectiveSubjectFontSize: effectiveSubjectFontSize,
+                  effectiveTeacherFontSize: effectiveTeacherFontSize,
+                  effectiveRoomFontSize: effectiveRoomFontSize,
+                  effectiveTextColor: effectiveTextColor,
+                  effectiveSecondaryTextColor: effectiveSecondaryTextColor,
+                  widthCompact: widthCompact,
+                  heightCompact: heightCompact,
+                  heightMinimal: heightMinimal,
+                  showTeacher: showTeacher,
+                  showRoom: showRoom,
+                  isSubstituted: isSubstituted,
+                )
+              : _buildClassicContent(
+                  context: context,
+                  accentStyle: accentStyle,
+                  fgColor: fgColor,
+                  effectiveRadius: effectiveRadius,
+                  effectiveSubjectFontSize: effectiveSubjectFontSize,
+                  effectiveTeacherFontSize: effectiveTeacherFontSize,
+                  effectiveRoomFontSize: effectiveRoomFontSize,
+                  effectiveTextColor: effectiveTextColor,
+                  effectiveSecondaryTextColor: effectiveSecondaryTextColor,
+                  widthCompact: widthCompact,
+                  heightCompact: heightCompact,
+                  heightMinimal: heightMinimal,
+                  showTeacher: showTeacher,
+                  showRoom: showRoom,
+                  isSubstituted: isSubstituted,
+                ),
+        ),
+      ],
+    );
+
+    if (blurEnabled) {
+      cardContent = ClipRRect(
+        borderRadius: cardRadius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+          child: cardContent,
+        ),
+      );
+    } else {
+      cardContent = ClipRRect(borderRadius: cardRadius, child: cardContent);
+    }
+
+    return Container(
+      decoration: BoxDecoration(borderRadius: cardRadius, boxShadow: shadows),
+      child: cardContent,
+    );
+  }
+
+  Widget _buildCleanContent({
+    required BuildContext context,
+    required int accentStyle,
+    required Color fgColor,
+    required double effectiveRadius,
+    required double effectiveSubjectFontSize,
+    required double effectiveTeacherFontSize,
+    required double effectiveRoomFontSize,
+    required Color effectiveTextColor,
+    required Color effectiveSecondaryTextColor,
+    required bool widthCompact,
+    required bool heightCompact,
+    required bool heightMinimal,
+    required bool showTeacher,
+    required bool showRoom,
+    required bool isSubstituted,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (accentStyle == 2) ...[
+              Container(
+                width: 6.5,
+                height: 6.5,
+                margin: const EdgeInsets.only(right: 4.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: fgColor,
+                  boxShadow: _glowShadows(context, [
+                    BoxShadow(
+                      color: fgColor.withValues(alpha: 0.6),
+                      blurRadius: 4,
+                    ),
+                  ]),
+                ),
+              ),
+            ],
+            Flexible(
+              child: Text(
+                subject,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: untisThemeTextStyle(
+                  context,
+                  display: true,
+                  fontSize: effectiveSubjectFontSize,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                  color: effectiveTextColor,
+                  decoration: isCancelled ? TextDecoration.lineThrough : null,
+                  decorationColor: fgColor.withValues(alpha: 0.6),
+                  decorationThickness: 1.6,
+                ),
+              ),
+            ),
+            if ((hasExam || hasHomework) && !widthCompact) ...[
+              const SizedBox(width: 4),
+              Icon(
+                hasExam
+                    ? Icons.assignment_turned_in_rounded
+                    : Icons.assignment_rounded,
+                size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
+                color: effectiveTextColor.withValues(alpha: 0.85),
+              ),
+            ],
+            if (isTeacherMissing && !widthCompact) ...[
+              const SizedBox(width: 4),
+              Icon(
+                Icons.person_off_rounded,
+                size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
+                color: Colors.deepOrange.withValues(alpha: 0.9),
+              ),
+            ],
+            if (isSubstitution && !widthCompact && !heightMinimal) ...[
+              const SizedBox(width: 3),
+              Icon(
+                Icons.swap_horiz_rounded,
+                size: (effectiveSubjectFontSize * 0.95).clamp(10.0, 15.0),
+                color: effectiveTextColor.withValues(alpha: 0.9),
+              ),
+            ],
+          ],
+        ),
+        if (!heightMinimal &&
+            ((showRoom && room.isNotEmpty) ||
+                (showTeacher && teacher.isNotEmpty))) ...[
+          const SizedBox(height: 2),
+          Row(
+            key: const ValueKey('lesson-clean-meta-row'),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (showRoom && room.isNotEmpty) ...[
+                Flexible(
+                  child: Text(
+                    room,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: untisThemeTextStyle(
+                      context,
+                      fontSize: effectiveRoomFontSize,
+                      fontWeight: FontWeight.w700,
+                      color: effectiveSecondaryTextColor,
+                    ),
+                  ),
+                ),
+              ],
+              if (showRoom &&
+                  room.isNotEmpty &&
+                  showTeacher &&
+                  teacher.isNotEmpty) ...[
+                Text(
+                  ' • ',
+                  style: untisThemeTextStyle(
+                    context,
+                    fontSize: effectiveRoomFontSize * 0.9,
+                    fontWeight: FontWeight.w400,
+                    color: effectiveSecondaryTextColor.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+              if (showTeacher && teacher.isNotEmpty) ...[
+                Flexible(
+                  child: Text(
+                    teacher,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: untisThemeTextStyle(
+                      context,
+                      fontSize: effectiveTeacherFontSize,
+                      fontWeight: isSubstituted
+                          ? FontWeight.w800
+                          : FontWeight.w600,
+                      color: isSubstituted
+                          ? effectiveTextColor
+                          : effectiveSecondaryTextColor,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+        if (isSubstituted &&
+            (availableHeight == null || availableHeight! >= 54)) ...[
+          Text(
+            originalTeacher,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: untisThemeTextStyle(
+              context,
+              fontSize: effectiveTeacherFontSize * 0.88,
+              fontWeight: FontWeight.w500,
+              color: effectiveSecondaryTextColor.withValues(alpha: 0.6),
+              decoration: TextDecoration.lineThrough,
+              decorationColor: fgColor.withValues(alpha: 0.55),
+              decorationThickness: 1.4,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildClassicContent({
+    required BuildContext context,
+    required int accentStyle,
+    required Color fgColor,
+    required double effectiveRadius,
+    required double effectiveSubjectFontSize,
+    required double effectiveTeacherFontSize,
+    required double effectiveRoomFontSize,
+    required Color effectiveTextColor,
+    required Color effectiveSecondaryTextColor,
+    required bool widthCompact,
+    required bool heightCompact,
+    required bool heightMinimal,
+    required bool showTeacher,
+    required bool showRoom,
+    required bool isSubstituted,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (accentStyle == 2) ...[
+              Container(
+                width: 6.5,
+                height: 6.5,
+                margin: const EdgeInsets.only(right: 4.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: fgColor,
+                  boxShadow: _glowShadows(context, [
+                    BoxShadow(
+                      color: fgColor.withValues(alpha: 0.6),
+                      blurRadius: 4,
+                    ),
+                  ]),
+                ),
+              ),
+            ],
+            Flexible(
+              child: Text(
+                subject,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: untisThemeTextStyle(
+                  context,
+                  display: true,
+                  fontSize: effectiveSubjectFontSize,
+                  fontWeight: FontWeight.w800,
+                  color: effectiveTextColor,
+                  decoration: isCancelled ? TextDecoration.lineThrough : null,
+                  decorationColor: fgColor.withValues(alpha: 0.6),
+                  decorationThickness: 1.6,
+                ),
+              ),
+            ),
+            if (lessonShowSubjectIconsNotifier.value &&
+                subjectIcon != null &&
+                !widthCompact &&
+                !heightMinimal) ...[
+              Icon(
+                subjectIcon,
+                key: const ValueKey('lesson-inline-subject-icon'),
+                size: (effectiveSubjectFontSize * 1.15).clamp(11.0, 17.0),
+                color: effectiveTextColor.withValues(alpha: 0.85),
+              ),
+              const SizedBox(width: 3.5),
+            ],
+            if ((hasExam || hasHomework) && !widthCompact) ...[
+              const SizedBox(width: 4),
+              Icon(
+                hasExam
+                    ? Icons.assignment_turned_in_rounded
+                    : Icons.assignment_rounded,
+                size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
+                color: effectiveTextColor.withValues(alpha: 0.8),
+              ),
+            ],
+            if (isTeacherMissing && !widthCompact) ...[
+              const SizedBox(width: 4),
+              Icon(
+                Icons.person_off_rounded,
+                size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
+                color: Colors.deepOrange.withValues(alpha: 0.9),
+              ),
+            ],
+            if (isSubstitution && !widthCompact && !heightMinimal) ...[
+              const SizedBox(width: 3),
+              Icon(
+                Icons.swap_horiz_rounded,
+                size: (effectiveSubjectFontSize * 0.95).clamp(10.0, 15.0),
+                color: effectiveTextColor.withValues(alpha: 0.9),
+              ),
+            ],
+          ],
+        ),
+        if (!heightMinimal &&
+            showTeacher &&
+            teacher.isNotEmpty &&
+            (availableHeight == null || availableHeight! >= 42))
+          Text(
+            teacher,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: untisThemeTextStyle(
+              context,
+              fontSize: effectiveTeacherFontSize,
+              fontWeight: isSubstituted ? FontWeight.w800 : FontWeight.w600,
+              color: isSubstituted
+                  ? effectiveTextColor
+                  : effectiveSecondaryTextColor,
+            ),
+          ),
+        if (isSubstituted &&
+            (availableHeight == null || availableHeight! >= 54))
+          Text(
+            originalTeacher,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: untisThemeTextStyle(
+              context,
+              fontSize: effectiveTeacherFontSize * 0.9,
+              fontWeight: FontWeight.w500,
+              color: effectiveSecondaryTextColor.withValues(alpha: 0.6),
+              decoration: TextDecoration.lineThrough,
+              decorationColor: fgColor.withValues(alpha: 0.55),
+              decorationThickness: 1.4,
+            ),
+          ),
+        if (!heightCompact &&
+            showRoom &&
+            room.isNotEmpty &&
+            (availableHeight == null || availableHeight! >= 58))
+          Text(
+            room,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: untisThemeTextStyle(
+              context,
+              fontSize: effectiveRoomFontSize,
+              fontWeight: FontWeight.w600,
+              color: effectiveSecondaryTextColor,
+            ),
+          ),
+      ],
     );
   }
 }

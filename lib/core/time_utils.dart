@@ -42,6 +42,28 @@ int? normalizeUntisDateInt(Object? value) {
   return parsed == null ? null : untisDateInt(parsed);
 }
 
+int untisClockToMinutes(int clock) => (clock ~/ 100) * 60 + (clock % 100);
+
+String formatMinutesOfDay(int totalMinutes) {
+  final hours = (totalMinutes ~/ 60).toString().padLeft(2, '0');
+  final minutes = (totalMinutes % 60).toString().padLeft(2, '0');
+  return '$hours:$minutes';
+}
+
+DateTime? parseDotDate(String? value) {
+  final parts = (value ?? '').trim().split('.');
+  if (parts.length != 3) return null;
+  final day = int.tryParse(parts[0]);
+  final month = int.tryParse(parts[1]);
+  final year = int.tryParse(parts[2]);
+  if (day == null || month == null || year == null) return null;
+  final parsed = DateTime(year, month, day);
+  if (parsed.year != year || parsed.month != month || parsed.day != day) {
+    return null;
+  }
+  return parsed;
+}
+
 int? untisTimeToMinutes(Object? value) {
   if (value == null) return null;
   final raw = value.toString().trim();

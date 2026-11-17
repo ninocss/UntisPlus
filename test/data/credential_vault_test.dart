@@ -38,6 +38,51 @@ void main() {
     expect(remaining.sessionId, 'session-b');
   });
 
+  test('writeAndVerifyAccount stores, verifies and is idempotent', () async {
+    const credentials = AccountCredentials(
+      password: 'secret',
+      credentialMode: 'loginKey',
+      sessionId: 'session',
+    );
+
+    expect(
+      await CredentialVault.instance.writeAndVerifyAccount(
+        accountId: 'account-a',
+        credentials: credentials,
+      ),
+      isTrue,
+    );
+    // A second call finds identical values and must still report success.
+    expect(
+      await CredentialVault.instance.writeAndVerifyAccount(
+        accountId: 'account-a',
+        credentials: credentials,
+      ),
+      isTrue,
+    );
+    final stored = await CredentialVault.instance.readAccount('account-a');
+    expect(stored.password, 'secret');
+    expect(stored.credentialMode, 'loginKey');
+    expect(stored.sessionId, 'session');
+
+    // Changed values are written, not skipped.
+    expect(
+      await CredentialVault.instance.writeAndVerifyAccount(
+        accountId: 'account-a',
+        credentials: const AccountCredentials(
+          password: 'rotated',
+          credentialMode: 'password',
+          sessionId: 'session-2',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      (await CredentialVault.instance.readAccount('account-a')).password,
+      'rotated',
+    );
+  });
+
   test(
     'removes a legacy API key only after verified secure migration',
     () async {

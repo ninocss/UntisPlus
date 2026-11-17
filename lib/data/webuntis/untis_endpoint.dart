@@ -128,13 +128,20 @@ Future<bool> checkDevServerReachable() async {
   try {
     // Try a lightweight endpoint that the dev server should expose.
     // Using a short timeout so startup isn't blocked.
-    final response = await http.Client().get(
-      Uri.parse('$baseUrl/api/health'),
-      headers: {'Accept': 'application/json'},
-    ).timeout(const Duration(seconds: 3));
-    final reachable = response.statusCode == 200;
-    devServerReachableNotifier.value = reachable;
-    return reachable;
+    final client = http.Client();
+    try {
+      final response = await client
+          .get(
+            Uri.parse('$baseUrl/api/health'),
+            headers: {'Accept': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 3));
+      final reachable = response.statusCode == 200;
+      devServerReachableNotifier.value = reachable;
+      return reachable;
+    } finally {
+      client.close();
+    }
   } catch (_) {
     devServerReachableNotifier.value = false;
     return false;

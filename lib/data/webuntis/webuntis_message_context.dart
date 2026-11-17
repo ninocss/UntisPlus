@@ -59,7 +59,7 @@ class WebUntisMessageContextResolver {
           ),
           headers: {'Cookie': cookie, 'Accept': 'application/json'},
         );
-        final token = _token(raw);
+        final token = parseToken(raw);
         if (token == null) continue;
         int? schoolYearId;
         try {
@@ -81,7 +81,7 @@ class WebUntisMessageContextResolver {
         return WebUntisMessageContext(
           cookie: cookie,
           token: token,
-          tenantId: _tenantId(token),
+          tenantId: parseTenantId(token),
           schoolYearId: schoolYearId,
         );
       } on WebUntisFailure catch (failure) {
@@ -96,7 +96,7 @@ class WebUntisMessageContextResolver {
         );
   }
 
-  static String? _token(String raw) {
+  static String? parseToken(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty || trimmed.startsWith('<')) return null;
     if (!trimmed.startsWith('{')) {
@@ -105,6 +105,10 @@ class WebUntisMessageContextResolver {
     }
     try {
       final decoded = jsonDecode(trimmed);
+      if (decoded is String) {
+        final value = decoded.trim();
+        return value.isEmpty ? null : value;
+      }
       if (decoded is Map) {
         for (final key in const [
           'accessToken',
@@ -121,7 +125,7 @@ class WebUntisMessageContextResolver {
     return null;
   }
 
-  static String? _tenantId(String token) {
+  static String? parseTenantId(String token) {
     final parts = token.split('.');
     if (parts.length < 2) return null;
     try {

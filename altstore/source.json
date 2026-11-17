@@ -35,6 +35,15 @@
       ],
       "versions": [
         {
+          "version": "5.6.3",
+          "buildVersion": "5.6.3",
+          "date": "2026-11-07",
+          "localizedDescription": "This update brings a fresh Material 3 Expressive UI redesign to settings, onboarding, and navigation, along with major layout enhancements for tablets. We also restored week swipe navigation in the timetable and fixed several display issues.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.7.0/UntisPlus-v5.7.0.ipa",
+          "size": 55602896,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "5.6.2",
           "buildVersion": "5.6.2",
           "date": "2026-09-28",
@@ -186,6 +195,16 @@
     "com.ninocss.untisplus"
   ],
   "news": [
+    {
+      "title": "Untis+ 5.6.3 is here",
+      "identifier": "untisplus-release-5-6-3",
+      "caption": "This update brings a fresh Material 3 Expressive UI redesign to settings, onboarding, and navigation, along with major layout enhancements for tablets. We also restored week swipe navigation in the timetable and fixed several display issues.",
+      "date": "2026-11-07",
+      "tintColor": "4A90D9",
+      "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
+      "appID": "com.ninocss.untisplus",
+      "notify": true
+    },
     {
       "title": "Untis+ 5.6.2 is here",
       "identifier": "untisplus-release-5-6-2",

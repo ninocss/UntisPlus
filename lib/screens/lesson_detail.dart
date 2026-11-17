@@ -14,26 +14,33 @@ String displayTeacherForLesson(Map<Object?, Object?> lesson) {
   return short.isEmpty ? full : short;
 }
 
-// --- DETAIL BOTTOM SHEET OPENER ---
 void _showLessonDetail(
   BuildContext context,
   dynamic lesson, {
   String originalTeacher = '',
 }) {
-  HapticFeedback.mediumImpact();
-  final originalSubject = lesson['_subjectLong']?.toString().isNotEmpty == true
-      ? lesson['_subjectLong'].toString()
-      : (lesson['_subjectShort']?.toString().isNotEmpty == true
-            ? lesson['_subjectShort'].toString()
-            : '---');
-  final subject = _displaySubject(lesson['_subjectShort'] ?? originalSubject);
+  if (lesson is! Map) return;
+  unawaited(AppHaptics.confirmation());
+  final originalSubject =
+      (lesson['_subjectLong']?.toString().trim().isNotEmpty == true &&
+              lesson['_subjectLong'] != '?')
+          ? lesson['_subjectLong'].toString().trim()
+          : ((lesson['_subjectShort']?.toString().trim().isNotEmpty == true &&
+                  lesson['_subjectShort'] != '?')
+              ? lesson['_subjectShort'].toString().trim()
+              : '---');
+  final subject = _displaySubject(
+    (lesson['_subjectShort']?.toString().trim().isNotEmpty == true &&
+            lesson['_subjectShort'] != '?')
+        ? lesson['_subjectShort']
+        : originalSubject,
+  );
   final subjectShort = lesson['_subjectShort']?.toString() ?? '';
-  final room = lesson['_room']?.toString().isNotEmpty == true
-      ? lesson['_room'].toString()
-      : '---';
+  final rawRoom = lesson['_room']?.toString().trim() ?? '';
+  final room = (rawRoom.isNotEmpty && rawRoom != '?') ? rawRoom : '---';
   final teacher = displayTeacherForLesson(lesson);
   final time =
-      '${_formatUntisTime(lesson['startTime'].toString())} – ${_formatUntisTime(lesson['endTime'].toString())}';
+      '${formatUntisTime(lesson['startTime'].toString())} – ${formatUntisTime(lesson['endTime'].toString())}';
   final isSubstitution = isTimetableSubstitution(lesson);
   final isCancelled = isTimetableCancelled(lesson);
   final info = (lesson['info'] ?? lesson['substText'] ?? '').toString().trim();
@@ -91,7 +98,13 @@ void _showLessonDetail(
       homework: homework,
       onHideSubject: () {
         Navigator.of(context).pop();
-        _hideSubject(subjectKey);
+        final keyToHide =
+            (subjectKey.trim().isNotEmpty && subjectKey.trim() != '?')
+                ? subjectKey.trim()
+                : (originalSubject != '---' ? originalSubject : '');
+        if (keyToHide.isNotEmpty) {
+          _hideSubject(keyToHide);
+        }
       },
     ),
   );
@@ -489,8 +502,6 @@ class _LessonDetailSheet extends StatelessWidget {
   }
 }
 
-// --- NOTIZEN DETAIL SEITE ---
-
 class StudentNotesPage extends StatelessWidget {
   /// Planned lesson text from the timetable (`lsText`).
   final String notes;
@@ -543,6 +554,7 @@ class StudentNotesPage extends StatelessWidget {
     final l = appL10nFor(appLocaleNotifier.value);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: RoundedBlurAppBar(
         title: Text(
           l.detailNotesForStudents,
@@ -557,7 +569,12 @@ class StudentNotesPage extends StatelessWidget {
           ),
           Positioned.fill(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                MediaQuery.paddingOf(context).top + kToolbarHeight + 16,
+                20,
+                120,
+              ),
               child: _withOptionalBackdropBlur(
                 sigma: 24,
                 child: const SizedBox.shrink(),
@@ -625,7 +642,6 @@ class StudentNotesPage extends StatelessWidget {
   }
 }
 
-// --- EXPRESSIVE CARD DESIGN ---
 class LessonCard extends StatelessWidget {
   final String subject, subjectShort, room, teacher, time;
   final bool isCancelled;
@@ -896,7 +912,7 @@ class LessonCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: cardRadius,
-        onTapDown: (_) => HapticFeedback.selectionClick(),
+        onTapDown: (_) => AppHaptics.selection(),
         child: cardBody,
       ),
     );

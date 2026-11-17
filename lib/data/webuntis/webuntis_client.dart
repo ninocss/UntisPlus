@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
@@ -48,10 +50,16 @@ class WebUntisClient {
   WebUntisClient({
     http.Client? client,
     this.timeout = const Duration(seconds: 15),
-    this.maxRetries = 1,
-  }) : _client = client ?? http.Client();
+    this.maxRetries = 2,
+  }) : _client = client ?? _sharedHttpClient,
+       _ownsClient = client != null;
+
+  /// Shared transport pool for default clients so repositories reuse TCP/TLS
+  /// connections instead of performing a fresh handshake per repository.
+  static final http.Client _sharedHttpClient = http.Client();
 
   final http.Client _client;
+  final bool _ownsClient;
   final Duration timeout;
   final int maxRetries;
   final Map<String, Future<dynamic>> _inFlight = {};
@@ -202,6 +210,8 @@ class WebUntisClient {
     });
   }
 
+  static final Random _random = Random();
+
   Future<http.Response> _send(Future<http.Response> Function() request) async {
     for (var attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -215,8 +225,19 @@ class WebUntisClient {
             statusCode: response.statusCode,
           );
         }
+        if (response.statusCode == 429 && attempt < maxRetries) {
+          final retryAfterSec = _parseRetryAfter(
+            response.headers['retry-after'],
+          );
+          await _backoff(
+            attempt,
+            overrideMs: retryAfterSec != null ? retryAfterSec * 1000 : null,
+          );
+          continue;
+        }
         if (response.statusCode < 200 || response.statusCode >= 300) {
-          if (response.statusCode >= 500 && attempt < maxRetries) {
+          if ((response.statusCode >= 500 || response.statusCode == 429) &&
+              attempt < maxRetries) {
             await _backoff(attempt);
             continue;
           }
@@ -236,14 +257,56 @@ class WebUntisClient {
           WebUntisFailureKind.timeout,
           'The WebUntis request timed out.',
         );
-      } on http.ClientException {
+      } on SocketException catch (e) {
         if (attempt < maxRetries) {
           await _backoff(attempt);
           continue;
         }
-        throw const WebUntisFailure(
+        throw WebUntisFailure(
           WebUntisFailureKind.offline,
-          'No network connection is available.',
+          'No network connection is available: ${e.message}',
+          cause: e,
+        );
+      } on HttpException catch (e) {
+        if (attempt < maxRetries) {
+          await _backoff(attempt);
+          continue;
+        }
+        throw WebUntisFailure(
+          WebUntisFailureKind.offline,
+          'Network connection interrupted: ${e.message}',
+          cause: e,
+        );
+      } on HandshakeException catch (e) {
+        if (attempt < maxRetries) {
+          await _backoff(attempt);
+          continue;
+        }
+        throw WebUntisFailure(
+          WebUntisFailureKind.offline,
+          'TLS handshake failed: ${e.message}',
+          cause: e,
+        );
+      } on http.ClientException catch (e) {
+        if (attempt < maxRetries) {
+          await _backoff(attempt);
+          continue;
+        }
+        throw WebUntisFailure(
+          WebUntisFailureKind.offline,
+          'No network connection is available: ${e.message}',
+          cause: e,
+        );
+      } catch (e) {
+        if (e is WebUntisFailure) rethrow;
+        if (attempt < maxRetries && _isRetryableNetworkError(e)) {
+          await _backoff(attempt);
+          continue;
+        }
+        throw WebUntisFailure(
+          WebUntisFailureKind.offline,
+          'Network connection failed: $e',
+          cause: e,
         );
       }
     }
@@ -253,9 +316,33 @@ class WebUntisClient {
     );
   }
 
-  Future<void> _backoff(int attempt) => Future<void>.delayed(
-    Duration(milliseconds: 250 * (1 << attempt.clamp(0, 3))),
-  );
+  Future<void> _backoff(int attempt, {int? overrideMs}) {
+    if (overrideMs != null && overrideMs > 0) {
+      return Future<void>.delayed(
+        Duration(milliseconds: overrideMs.clamp(100, 10000)),
+      );
+    }
+    final base = 250 * (1 << attempt.clamp(0, 3));
+    final jitter = _random.nextInt(100);
+    return Future<void>.delayed(Duration(milliseconds: base + jitter));
+  }
+
+  static int? _parseRetryAfter(String? header) {
+    if (header == null || header.trim().isEmpty) return null;
+    return int.tryParse(header.trim());
+  }
+
+  static bool _isRetryableNetworkError(Object error) {
+    final message = error.toString().toLowerCase();
+    return message.contains('connection') ||
+        message.contains('socket') ||
+        message.contains('reset') ||
+        message.contains('closed') ||
+        message.contains('broken pipe') ||
+        message.contains('timeout') ||
+        message.contains('handshake') ||
+        message.contains('abort');
+  }
 
   Map<String, dynamic> _decode(http.Response response) {
     try {
@@ -286,5 +373,9 @@ class WebUntisClient {
     return future.whenComplete(() => _inFlight.remove(key));
   }
 
-  void close() => _client.close();
+  void close() {
+    if (_ownsClient) {
+      _client.close();
+    }
+  }
 }

@@ -213,3 +213,240 @@ Future<int> _downloadLocalModelFile({
   }
   return received;
 }
+
+enum LocalModelDownloadPhase { idle, downloading, completed, error }
+
+@immutable
+class LocalModelDownloadState {
+  const LocalModelDownloadState({
+    this.phase = LocalModelDownloadPhase.idle,
+    this.progress = 0,
+    this.received = 0,
+    this.total = 0,
+    this.bytesPerSecond = 0,
+    this.error,
+  });
+
+  final LocalModelDownloadPhase phase;
+  final double progress;
+  final int received;
+  final int total;
+  final double bytesPerSecond;
+  final Object? error;
+
+  bool get isDownloading => phase == LocalModelDownloadPhase.downloading;
+  bool get hasError => phase == LocalModelDownloadPhase.error;
+
+  Duration? get estimatedRemainingTime {
+    if (bytesPerSecond <= 0 || total <= 0 || received >= total) return null;
+    final remainingBytes = total - received;
+    final seconds = (remainingBytes / bytesPerSecond).round();
+    if (seconds <= 0) return null;
+    return Duration(seconds: seconds);
+  }
+}
+
+String formatModelRemainingTime(Duration? d, AppL10n l) {
+  if (d == null) return '';
+  final totalSeconds = d.inSeconds;
+  final timeStr = switch (totalSeconds) {
+    < 60 => '${totalSeconds}s',
+    < 3600 => '${d.inMinutes}m ${(totalSeconds % 60)}s',
+    _ => '${d.inHours}h ${(d.inMinutes % 60)}m',
+  };
+  return l.settingsAiDownloadRemaining(timeStr);
+}
+
+/// Owns local-model transfers independently from whichever settings or
+/// onboarding page currently displays them. UI widgets only subscribe to the
+/// immutable state map and can be disposed without interrupting a transfer.
+class LocalModelDownloadCoordinator
+    extends ValueNotifier<Map<String, LocalModelDownloadState>> {
+  LocalModelDownloadCoordinator._() : super(const {});
+
+  static final LocalModelDownloadCoordinator instance =
+      LocalModelDownloadCoordinator._();
+
+  final Map<String, CancelToken> _tokens = {};
+  final Map<String, DateTime> _lastProgressAt = {};
+  final Map<String, int> _lastReceived = {};
+  final Map<String, DateTime> _lastNotificationAt = {};
+
+  LocalModelDownloadState stateFor(String modelId) =>
+      value[modelId] ?? const LocalModelDownloadState();
+
+  void _publish(String modelId, LocalModelDownloadState state) {
+    value = Map.unmodifiable({...value, modelId: state});
+  }
+
+  Future<String> pathFor(LocalModelInfo model) async {
+    final directory = await getApplicationDocumentsDirectory();
+    return '${directory.path}/${model.url.split('/').last}';
+  }
+
+  Future<bool> isInstalled(LocalModelInfo model) async =>
+      _isValidLocalModelFile(await pathFor(model), model: model);
+
+  Future<LocalModelDownloadState> start(LocalModelInfo model) async {
+    final existing = stateFor(model.id);
+    if (existing.isDownloading) return existing;
+
+    final path = await pathFor(model);
+    if (await _isValidLocalModelFile(path, model: model)) {
+      final length = await File(path).length();
+      final completed = LocalModelDownloadState(
+        phase: LocalModelDownloadPhase.completed,
+        progress: 1,
+        received: length,
+        total: length,
+      );
+      _publish(model.id, completed);
+      return completed;
+    }
+
+    final finalFile = File(path);
+    if (await finalFile.exists()) await finalFile.delete();
+
+    final token = CancelToken();
+    _tokens[model.id] = token;
+    _publish(
+      model.id,
+      const LocalModelDownloadState(phase: LocalModelDownloadPhase.downloading),
+    );
+
+    final partialPath = '$path.part';
+    try {
+      final expectedBytes = (model.sizeGb * 1024 * 1024 * 1024).toInt();
+      await _downloadLocalModelFile(
+        url: model.url,
+        targetPath: partialPath,
+        cancelToken: token,
+        expectedBytes: expectedBytes,
+        onProgress: (received, total) {
+          if (token.isCancelled) return;
+          final now = DateTime.now();
+          final previousAt = _lastProgressAt[model.id];
+          if (previousAt != null &&
+              now.difference(previousAt).inMilliseconds < 200) {
+            return;
+          }
+          final previousReceived = _lastReceived[model.id] ?? received;
+          final elapsedMs = previousAt == null
+              ? 0
+              : now.difference(previousAt).inMilliseconds;
+          final speed = elapsedMs <= 0
+              ? 0.0
+              : (received - previousReceived) * 1000 / elapsedMs;
+          _lastProgressAt[model.id] = now;
+          _lastReceived[model.id] = received;
+          final state = LocalModelDownloadState(
+            phase: LocalModelDownloadPhase.downloading,
+            progress: total > 0 ? received / total : 0,
+            received: received,
+            total: total,
+            bytesPerSecond: speed,
+          );
+          _publish(model.id, state);
+
+          final lastNotif = _lastNotificationAt[model.id];
+          if (lastNotif == null ||
+              now.difference(lastNotif).inMilliseconds >= 1000) {
+            _lastNotificationAt[model.id] = now;
+            final pct = total > 0 ? ((received / total) * 100).round() : 0;
+            final remainingTime = state.estimatedRemainingTime;
+            final l = appL10nFor(appLocaleNotifier.value);
+            final timePart = remainingTime != null
+                ? ' • ${formatModelRemainingTime(remainingTime, l)}'
+                : '';
+            final speedPart = _formatByteSize(speed.round());
+            NotificationService().showDownloadProgressNotification(
+              id: NotificationIds.modelDownload,
+              title: model.name,
+              body: '$pct% • $speedPart/s$timePart',
+              progress: pct,
+              maxProgress: 100,
+              locale: appLocaleNotifier.value,
+            );
+          }
+        },
+      );
+
+      if (!await _isValidLocalModelFile(partialPath, model: model) ||
+          !await _verifyLocalModelChecksum(partialPath, model)) {
+        final partial = File(partialPath);
+        if (await partial.exists()) await partial.delete();
+        throw const FormatException('GGUF verification failed');
+      }
+      if (await finalFile.exists()) await finalFile.delete();
+      await File(partialPath).rename(path);
+      final length = await finalFile.length();
+      final completed = LocalModelDownloadState(
+        phase: LocalModelDownloadPhase.completed,
+        progress: 1,
+        received: length,
+        total: length,
+      );
+      _publish(model.id, completed);
+
+      _lastNotificationAt.remove(model.id);
+      final l = appL10nFor(appLocaleNotifier.value);
+      NotificationService().showDownloadCompleteNotification(
+        id: NotificationIds.modelDownload,
+        title: model.name,
+        body: l.settingsAiDownloadComplete,
+        locale: appLocaleNotifier.value,
+      );
+      return completed;
+    } on DioException catch (error) {
+      _lastNotificationAt.remove(model.id);
+      NotificationService().cancelNotification(NotificationIds.modelDownload);
+      if (error.type == DioExceptionType.cancel) {
+        const idle = LocalModelDownloadState();
+        _publish(model.id, idle);
+        return idle;
+      }
+      final failed = LocalModelDownloadState(
+        phase: LocalModelDownloadPhase.error,
+        progress: -1,
+        error: error,
+      );
+      _publish(model.id, failed);
+      return failed;
+    } catch (error) {
+      _lastNotificationAt.remove(model.id);
+      NotificationService().cancelNotification(NotificationIds.modelDownload);
+      final failed = LocalModelDownloadState(
+        phase: LocalModelDownloadPhase.error,
+        progress: -1,
+        error: error,
+      );
+      _publish(model.id, failed);
+      return failed;
+    } finally {
+      if (identical(_tokens[model.id], token)) _tokens.remove(model.id);
+      _lastProgressAt.remove(model.id);
+      _lastReceived.remove(model.id);
+    }
+  }
+
+  Future<LocalModelDownloadState> retry(LocalModelInfo model) => start(model);
+
+  void cancel(String modelId) {
+    _lastNotificationAt.remove(modelId);
+    NotificationService().cancelNotification(NotificationIds.modelDownload);
+    final token = _tokens[modelId];
+    if (token != null && !token.isCancelled) token.cancel('User cancelled');
+    _publish(modelId, const LocalModelDownloadState());
+  }
+
+  Future<void> delete(LocalModelInfo model) async {
+    cancel(model.id);
+    final path = await pathFor(model);
+    for (final file in [File(path), File('$path.part')]) {
+      if (await file.exists()) await file.delete();
+    }
+    final next = Map<String, LocalModelDownloadState>.from(value)
+      ..remove(model.id);
+    value = Map.unmodifiable(next);
+  }
+}

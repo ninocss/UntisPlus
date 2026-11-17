@@ -50,56 +50,32 @@ void main() {
     aiProvider = 'gemini';
   });
 
-  testWidgets('AI assistant uses the shared app section tabs', (tester) async {
+  testWidgets('AI assistant loads into unified expressive chat', (
+    tester,
+  ) async {
     final l = appL10nFor('de');
 
     await tester.pumpWidget(const UntisPlusApp(startScreen: AiAssistantPage()));
     await pumpUntil(tester, find.byType(TextField));
 
-    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
-    expectCenteredSectionTabs(tabBar, 2);
-    expect(find.text(l.aiTabAnalysis), findsOneWidget);
-    expect(find.text(l.aiTabChat), findsOneWidget);
     expect(find.text(l.aiTitle), findsWidgets);
-    expect(find.text(l.aiEmptyPromptTitle), findsNothing);
-    expect(find.text(l.aiEmptyPromptSubtitle), findsNothing);
-  });
-
-  testWidgets('AI tabs keep chat functionality discoverable', (tester) async {
-    final l = appL10nFor('de');
-
-    await tester.pumpWidget(const UntisPlusApp(startScreen: AiAssistantPage()));
-    await pumpUntil(tester, find.byType(TextField));
-
-    await tester.tap(find.text(l.aiTabChat));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 450));
-
+    expect(find.byIcon(Icons.menu_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.edit_square), findsOneWidget);
+    expect(find.byIcon(Icons.add_rounded), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
     expect(
       l.aiGreetings.any(
         (greeting) => find.text(greeting).evaluate().isNotEmpty,
       ),
       isTrue,
     );
-    expect(find.text(l.aiTryIt), findsNothing);
-    for (final suggestion in l.aiChatSuggestions) {
-      expect(find.text(suggestion), findsNothing);
-    }
-    expect(find.text(l.aiChatTitle), findsNothing);
-    expect(find.text(l.aiChatSubtitle), findsNothing);
-    expect(find.text(l.aiTabAnalysis), findsOneWidget);
-    expect(find.text(l.aiTabChat), findsOneWidget);
-    expect(find.byIcon(Icons.add_rounded), findsWidgets);
   });
 
-  testWidgets('AI greeting fades away after the first message', (tester) async {
+  testWidgets('AI greeting fades away after sending a message', (tester) async {
     final l = appL10nFor('de');
 
     await tester.pumpWidget(const UntisPlusApp(startScreen: AiAssistantPage()));
     await pumpUntil(tester, find.byType(TextField));
-    await tester.tap(find.text(l.aiTabChat));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 450));
 
     final visibleGreeting = l.aiGreetings.singleWhere(
       (greeting) => find.text(greeting).evaluate().isNotEmpty,
@@ -114,13 +90,12 @@ void main() {
     }
 
     expect(find.text(visibleGreeting), findsNothing);
+    expect(find.text('Hallo'), findsOneWidget);
   });
 
   testWidgets('AI assistant remains usable with animations disabled', (
     tester,
   ) async {
-    final l = appL10nFor('de');
-
     await tester.pumpWidget(
       UntisPlusApp(
         startScreen: MediaQuery(
@@ -131,11 +106,7 @@ void main() {
     );
     await pumpUntil(tester, find.byType(TextField));
 
-    await tester.tap(find.text(l.aiTabChat));
-    await tester.pump(const Duration(milliseconds: 150));
-
-    expect(find.text(l.aiChatTitle), findsNothing);
-    expect(find.text(l.aiChatSubtitle), findsNothing);
+    expect(find.byType(TextField), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -1,7 +1,5 @@
 part of '../main.dart';
 
-// --- HAUSAUFGABEN & PRÜFUNGEN ---
-
 Widget _chip(String label, Color bg, Color fg) => Container(
   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
   decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
@@ -37,6 +35,54 @@ List<DateTime> _findSubjectDates(String subject) {
   }
   final list = dates.toList()..sort();
   return list.take(4).toList();
+}
+
+Widget _buildSuggestedSubjectDatesBar({
+  required BuildContext context,
+  required String subject,
+  required DateTime selectedDate,
+  required ValueChanged<DateTime> onDateSelected,
+}) {
+  final suggested = _findSubjectDates(subject);
+  if (suggested.isEmpty) return const SizedBox.shrink();
+  final cs = Theme.of(context).colorScheme;
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: suggested.map((d) {
+          final isSelected =
+              d.year == selectedDate.year &&
+              d.month == selectedDate.month &&
+              d.day == selectedDate.day;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(
+                DateFormat(
+                  'E, dd.MM.',
+                  _icuLocale(appLocaleNotifier.value),
+                ).format(d),
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              selected: isSelected,
+              onSelected: (val) {
+                if (val) onDateSelected(d);
+              },
+              selectedColor: cs.primaryContainer,
+              labelStyle: TextStyle(
+                color: isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    ),
+  );
 }
 
 Future<void> _showAddHomeworkDialog(
@@ -140,168 +186,53 @@ Future<void> _showAddHomeworkDialog(
                 ],
               ),
               const SizedBox(height: 32),
-              Text(
-                l.homeworkSubjectLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
-              ),
+              _sheetSectionLabel(ctx, l.homeworkSubjectLabel),
               const SizedBox(height: 12),
-              if (subjects.isNotEmpty)
-                _m3SelectionMenu(
-                  context: ctx,
-                  value: selectedSubject,
-                  entries: subjects,
-                  icon: Icons.book_rounded,
-                  onSelected: (value) => setDlg(() {
-                    selectedSubject = value;
-                    subjectCtrl.text = selectedSubject;
-                  }),
-                )
-              else
-                TextField(
-                  controller: subjectCtrl,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.book_rounded),
-                    hintText: l.homeworkSubjectLabel,
-                    filled: true,
-                    fillColor: cs.surfaceContainerHighest.withValues(
-                      alpha: 0.4,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 24),
-              Text(
-                l.homeworkTaskLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
+              _untisSheetSubjectSelector(
+                context: ctx,
+                subjects: subjects,
+                selectedSubject: selectedSubject,
+                onSelected: (value) => setDlg(() {
+                  selectedSubject = value;
+                  subjectCtrl.text = selectedSubject;
+                }),
+                fallbackController: subjectCtrl,
+                fallbackHint: l.homeworkSubjectLabel,
               ),
+              const SizedBox(height: 24),
+              _sheetSectionLabel(ctx, l.homeworkTaskLabel),
               const SizedBox(height: 12),
               TextField(
                 controller: taskCtrl,
                 maxLines: 3,
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                decoration: InputDecoration(
-                  prefixIcon: const Padding(
-                    padding: EdgeInsets.only(bottom: 42),
-                    child: Icon(Icons.assignment_rounded),
-                  ),
-                  hintText: l.homeworkTaskLabel,
-                  filled: true,
-                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                l.homeworkDueDateLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Builder(
-                builder: (context) {
-                  final suggested = _findSubjectDates(selectedSubject);
-                  if (suggested.isEmpty) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: suggested.map((d) {
-                          final isSelected =
-                              d.year == selectedDate.year &&
-                              d.month == selectedDate.month &&
-                              d.day == selectedDate.day;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: ChoiceChip(
-                              label: Text(
-                                DateFormat(
-                                  'E, dd.MM.',
-                                  appLocaleNotifier.value,
-                                ).format(d),
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              selected: isSelected,
-                              onSelected: (val) {
-                                if (val) setDlg(() => selectedDate = d);
-                              },
-                              selectedColor: cs.primaryContainer,
-                              labelStyle: TextStyle(
-                                color: isSelected
-                                    ? cs.onPrimaryContainer
-                                    : cs.onSurfaceVariant,
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                decoration:
+                    _untisSheetInputDecoration(
+                      ctx,
+                      prefixIcon: Icons.assignment_rounded,
+                      hintText: l.homeworkTaskLabel,
+                    ).copyWith(
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.only(bottom: 42),
+                        child: Icon(Icons.assignment_rounded),
                       ),
                     ),
-                  );
-                },
               ),
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: ctx,
-                    initialDate: selectedDate,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime(2030),
-                  );
-                  if (picked != null) {
-                    setDlg(() => selectedDate = picked);
-                  }
-                },
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today_rounded, size: 20),
-                      const SizedBox(width: 12),
-                      Text(
-                        DateFormat(
-                          'dd. MMMM yyyy',
-                          _icuLocale(appLocaleNotifier.value),
-                        ).format(selectedDate),
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              const SizedBox(height: 24),
+              _sheetSectionLabel(ctx, l.homeworkDueDateLabel),
+              const SizedBox(height: 12),
+              _buildSuggestedSubjectDatesBar(
+                context: ctx,
+                subject: selectedSubject,
+                selectedDate: selectedDate,
+                onDateSelected: (d) => setDlg(() => selectedDate = d),
+              ),
+              _untisSheetDatePickerField(
+                context: ctx,
+                selectedDate: selectedDate,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+                onDateSelected: (picked) => setDlg(() => selectedDate = picked),
               ),
               const SizedBox(height: 40),
               Row(
@@ -385,72 +316,27 @@ Future<void> _showAddHomeworkDialog(
   );
 }
 
+// Uses [AiRequestSpec] via [_requestAiVisionImportText].
 Future<void> _importHomeworkWithAI(BuildContext context) async {
-  if (!aiEnabledNotifier.value) return;
   final l = appL10nFor(appLocaleNotifier.value);
-  final runtime = _currentAiRuntimeConfiguration();
-  final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
-  final capabilities = _aiRequestCoordinator.capabilities(runtime);
-  final preflight = AiRequestSpec(
-    systemPrompt: '',
-    userPrompt: '',
-    noReplyMessage: l.aiNoReply,
-    allowLocal: true,
-    requireLocalModel: false,
-    missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
-    customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
-  );
-  try {
-    _aiRequestCoordinator.validate(runtime, preflight);
-  } catch (e) {
-    final message = e.toString().replaceFirst('Exception: CONFIG: ', '');
-    if (context.mounted) context.showUntisSnackBar(message);
-    return;
-  }
-  final providerUsesGeminiProtocol = capabilities.pdf;
-
-  final source = await _showUnifiedOptionSheet<String>(
+  final picked = await _pickAiImportFileFromSheet(
     context: context,
-    title: l.homeworkImportTitle,
-    options: [
-      _SheetOption(
-        value: 'camera',
-        title: l.examsImportCamera,
-        icon: Icons.camera_alt_rounded,
-      ),
-      _SheetOption(
-        value: 'gallery',
-        title: l.examsImportGallery,
-        icon: Icons.image_rounded,
-      ),
-      _SheetOption(
-        value: 'file',
-        title: l.examsImportFile,
-        icon: Icons.picture_as_pdf_rounded,
-      ),
-    ],
+    sheetTitle: l.homeworkImportTitle,
   );
-
-  if (source == null) return;
-  final importFile = await _pickAiImportFile(
-    source,
-    allowPdf: providerUsesGeminiProtocol,
-  );
-  if (importFile == null) return;
-
-  if (!context.mounted) return;
+  if (picked == null || !context.mounted) return;
 
   try {
     final prompt = l.aiHomeworkVisionPrompt(
-      providerUsesGeminiProtocol ? l.aiFileKindPdf : '',
+      picked.supportsPdf ? l.aiFileKindPdf : '',
     );
 
     final text = await runWithUntisBlockingLoader(
       context,
-      () => _requestAiVisionAnalysisGlobal(
+      () => _requestAiVisionImportText(
         prompt: prompt,
-        fileBytes: importFile.bytes,
-        mimeType: importFile.mimeType,
+        fileBytes: picked.file.bytes,
+        mimeType: picked.file.mimeType,
+        attachmentName: 'homework-import',
       ),
     );
     if (!context.mounted) return;
@@ -478,47 +364,10 @@ Future<void> _importHomeworkWithAI(BuildContext context) async {
     context.showUntisSnackBar(l.homeworkImportSuccess);
   } catch (e) {
     if (!context.mounted) return;
-    context.showUntisSnackBar('${l.homeworkImportError}$e');
+    context.showUntisSnackBar(
+      '${l.homeworkImportError}${_formatAiErrorDetail(e, l)}',
+    );
   }
-}
-
-Future<String> _requestAiVisionAnalysisGlobal({
-  required String prompt,
-  required Uint8List fileBytes,
-  required String mimeType,
-}) {
-  if (!aiEnabledNotifier.value) {
-    return Future<String>.error(StateError('AI is disabled'));
-  }
-  final l = appL10nFor(appLocaleNotifier.value);
-  final runtime = _currentAiRuntimeConfiguration();
-  final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
-  return _aiRequestCoordinator.generate(
-    runtime: runtime,
-    spec: AiRequestSpec(
-      systemPrompt: '',
-      userPrompt: prompt,
-      temperature: 0.1,
-      maxTokens: 2200,
-      topP: 1,
-      requiresImages: mimeType.startsWith('image/'),
-      requiresPdf: mimeType == 'application/pdf',
-      allowLocal: false,
-      attachments: [
-        AiChatAttachment(
-          name: 'homework-import',
-          mimeType: mimeType,
-          bytes: fileBytes,
-        ),
-      ],
-      noReplyMessage: l.aiNoReply,
-      missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
-      customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
-      localProviderUnsupportedMessage: 'Unsupported provider for vision: local',
-      unsupportedAttachmentMessage: (type) =>
-          'Unsupported file type for this provider: $type',
-    ),
-  );
 }
 
 class HomeworkPage extends StatelessWidget {
@@ -530,6 +379,7 @@ class HomeworkPage extends StatelessWidget {
     final l = appL10nFor(appLocaleNotifier.value);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: cs.surface,
       appBar: RoundedBlurAppBar(
         title: Text(
@@ -577,8 +427,6 @@ class _HomeworkView extends StatefulWidget {
 }
 
 class _HomeworkViewState extends State<_HomeworkView> {
-  int _filterIndex = 0; // 0 = Alle, 1 = Offen, 2 = Bald, 3 = Erledigt
-
   @override
   void initState() {
     super.initState();
@@ -656,16 +504,6 @@ class _HomeworkViewState extends State<_HomeworkView> {
             final doneItems = allItems
                 .where((e) => e['isDone'] == true)
                 .toList();
-            final dueSoonItems = openItems.where((entry) {
-              final dueDate = int.tryParse(entry['dueDate'].toString()) ?? 0;
-              return isHomeworkDueSoon(dueDate);
-            }).toList();
-
-            final filtered = _filterIndex == 1
-                ? openItems
-                : _filterIndex == 2
-                ? dueSoonItems
-                : (_filterIndex == 3 ? doneItems : allItems);
 
             return ExpressiveRefreshIndicator(
               onRefresh: () async {
@@ -699,110 +537,90 @@ class _HomeworkViewState extends State<_HomeworkView> {
                 lessonNotesNotifier.value = res['lessonNotes']!;
               },
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 132),
+                padding: UntisLayout.pagePadding(
+                  context,
+                  bottom: 132,
+                ).copyWith(top: MediaQuery.paddingOf(context).top + 16),
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
                 children: [
-                  _buildHomeworkSummaryCard(
-                    context,
-                    cs,
-                    openCount: openItems.length,
-                    dueSoonCount: dueSoonItems.length,
-                  ),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      children: [
-                        _filterChip(
-                          context,
-                          cs,
-                          '${l.homeworkFilterAll} (${allItems.length})',
-                          Icons.clear_all_rounded,
-                          0,
-                        ),
-                        const SizedBox(width: 8),
-                        _filterChip(
-                          context,
-                          cs,
-                          '${l.homeworkFilterOpen} (${openItems.length})',
-                          Icons.radio_button_unchecked_rounded,
-                          1,
-                        ),
-                        const SizedBox(width: 8),
-                        _filterChip(
-                          context,
-                          cs,
-                          '${l.homeworkDueSoonFilter} (${dueSoonItems.length})',
-                          Icons.upcoming_rounded,
-                          2,
-                        ),
-                        const SizedBox(width: 8),
-                        _filterChip(
-                          context,
-                          cs,
-                          '${l.homeworkFilterDone} (${doneItems.length})',
-                          Icons.check_circle_rounded,
-                          3,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  if (filtered.isEmpty) ...[
-                    const SizedBox(height: 60),
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: cs.primary.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.assignment_turned_in_rounded,
-                              size: 56,
-                              color: cs.primary.withValues(alpha: 0.6),
-                            ),
+                  if (allItems.isEmpty) ...[
+                    _buildUnifiedEmptyState(
+                      context: context,
+                      icon: Icons.assignment_turned_in_rounded,
+                      title: l.homeworkNone,
+                      hint: l.homeworkNoneHint,
+                      action: TextButton.icon(
+                        onPressed: () => _showAddHomeworkDialog(context),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: Text(
+                          l.homeworkAddTitle,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            l.homeworkNone,
-                            style: GoogleFonts.outfit(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: cs.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            l.homeworkNoneHint,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ] else ...[
-                    ...filtered.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final hw = entry.value;
-                      return _springEntry(
-                        key: ValueKey('hw_${hw['id']}_$idx'),
-                        duration: Duration(milliseconds: 380 + idx * 60),
-                        offsetY: 24,
-                        startScale: 0.94,
-                        curve: _kSmoothBounce,
-                        child: _buildHomeworkCard(context, cs, l, hw),
-                      );
-                    }),
+                    if (openItems.isNotEmpty) ...[
+                      _sectionHeader(
+                        context,
+                        l.homeworkFilterOpen,
+                        Icons.radio_button_unchecked_rounded,
+                        count: openItems.length,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildAdaptiveCardGrid(
+                        context,
+                        openItems.asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final hw = entry.value;
+                          return _springEntry(
+                            key: ValueKey('hw_open_${hw['id']}_$idx'),
+                            duration: Duration(
+                              milliseconds: (380 + idx * 40)
+                                  .clamp(380, 580)
+                                  .toInt(),
+                            ),
+                            offsetY: 24,
+                            startScale: 0.94,
+                            curve: _kSmoothBounce,
+                            child: _buildHomeworkCard(context, cs, l, hw),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    if (doneItems.isNotEmpty) ...[
+                      _sectionHeader(
+                        context,
+                        l.homeworkFilterDone,
+                        Icons.check_circle_rounded,
+                        count: doneItems.length,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildAdaptiveCardGrid(
+                        context,
+                        doneItems.asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final hw = entry.value;
+                          return _springEntry(
+                            key: ValueKey('hw_done_${hw['id']}_$idx'),
+                            duration: Duration(
+                              milliseconds: (380 + idx * 40)
+                                  .clamp(380, 580)
+                                  .toInt(),
+                            ),
+                            offsetY: 24,
+                            startScale: 0.94,
+                            curve: _kSmoothBounce,
+                            child: _buildHomeworkCard(context, cs, l, hw),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ],
                 ],
               ),
@@ -810,100 +628,6 @@ class _HomeworkViewState extends State<_HomeworkView> {
           },
         );
       },
-    );
-  }
-
-  Widget _filterChip(
-    BuildContext context,
-    ColorScheme cs,
-    String label,
-    IconData icon,
-    int index,
-  ) {
-    final selected = _filterIndex == index;
-    return _glassContainer(
-      context: context,
-      borderRadius: BorderRadius.circular(14),
-      color: selected
-          ? cs.primary
-          : cs.surfaceContainerHighest.withValues(alpha: 0.4),
-      border: Border.all(
-        color: selected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.3),
-        width: 1,
-      ),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          setState(() => _filterIndex = index);
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 15,
-                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.outfit(
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  fontSize: 13,
-                  color: selected ? cs.onPrimary : cs.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHomeworkSummaryCard(
-    BuildContext context,
-    ColorScheme cs, {
-    required int openCount,
-    required int dueSoonCount,
-  }) {
-    final l = appL10nFor(appLocaleNotifier.value);
-    final title = l.homeworkOpenCount(openCount);
-    final detail = dueSoonCount == 0
-        ? l.homeworkNothingDueSoon
-        : l.homeworkDueSoonCount(dueSoonCount);
-
-    return FeatureSummaryCard(
-      icon: Icons.assignment_turned_in_rounded,
-      title: Text(
-        title,
-        style: GoogleFonts.outfit(
-          fontSize: 17,
-          fontWeight: FontWeight.w900,
-          color: cs.onSurface,
-          letterSpacing: -0.3,
-        ),
-      ),
-      secondary: Row(
-        children: [
-          Icon(Icons.upcoming_rounded, size: 13, color: cs.primary),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              detail,
-              style: GoogleFonts.outfit(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: cs.onSurfaceVariant,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -961,28 +685,22 @@ class _HomeworkViewState extends State<_HomeworkView> {
     }
 
     Future<void> toggleDone() async {
-      HapticFeedback.selectionClick();
+      AppHaptics.selection();
       await setDone(!isDone);
       if (!context.mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(!isDone ? l.homeworkMarkedDone : l.homeworkReopened),
-          action: SnackBarAction(
-            label: l.commonUndo,
-            onPressed: () => unawaited(setDone(isDone)),
-          ),
+      context.showUntisSnackBar(
+        !isDone ? l.homeworkMarkedDone : l.homeworkReopened,
+        action: SnackBarAction(
+          label: l.commonUndo,
+          onPressed: () => unawaited(setDone(isDone)),
         ),
       );
     }
 
     Future<void> openHomework() async {
-      HapticFeedback.selectionClick();
+      AppHaptics.selection();
       if (!isCustom) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l.homeworkManaged)));
+        context.showUntisSnackBar(l.homeworkManaged);
         return;
       }
       final list = List<Map<String, dynamic>>.from(
@@ -1004,6 +722,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
       child: _glassContainer(
         context: context,
         borderRadius: BorderRadius.circular(24),
+        showShadow: false,
         color: isDone
             ? cs.surfaceContainerLowest.withValues(alpha: 0.35)
             : accent.withValues(alpha: isDark ? 0.14 : 0.08),
@@ -1071,28 +790,36 @@ class _HomeworkViewState extends State<_HomeworkView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (_customSubjectIcon(subject) != null)
-                              Icon(
-                                _customSubjectIcon(subject),
-                                size: 16,
-                                color: accent,
+                            Expanded(
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  if (_customSubjectIcon(subject) != null)
+                                    Icon(
+                                      _customSubjectIcon(subject),
+                                      size: 16,
+                                      color: accent,
+                                    ),
+                                  _chip(
+                                    _displaySubject(subject),
+                                    accent.withValues(alpha: 0.2),
+                                    accent,
+                                  ),
+                                  if (isCustom)
+                                    _chip(
+                                      l.examsOwn,
+                                      cs.tertiaryContainer,
+                                      cs.tertiary,
+                                    ),
+                                ],
                               ),
-                            _chip(
-                              _displaySubject(subject),
-                              accent.withValues(alpha: 0.2),
-                              accent,
                             ),
-                            if (isCustom) ...[
-                              const SizedBox(width: 6),
-                              _chip(
-                                l.examsOwn,
-                                cs.tertiaryContainer,
-                                cs.tertiary,
-                              ),
-                            ],
-                            const Spacer(),
-                            if (dueDateRaw.isNotEmpty)
+                            if (dueDateRaw.isNotEmpty) ...[
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 9,
@@ -1132,6 +859,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
                                   ],
                                 ),
                               ),
+                            ],
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -1259,193 +987,109 @@ Future<void> _showAddExamDialog(
                 ],
               ),
               const SizedBox(height: 32),
-              Text(
-                l.examsSubjectLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
-              ),
+              _sheetSectionLabel(ctx, l.examsSubjectLabel),
               const SizedBox(height: 12),
-              if (subjects.isNotEmpty)
-                _m3SelectionMenu(
-                  context: ctx,
-                  value: selectedSubject,
-                  entries: subjects,
-                  icon: Icons.book_rounded,
-                  onSelected: (value) => setDlg(() {
-                    selectedSubject = value;
-                    subjectCtrl.text = selectedSubject;
-                  }),
-                )
-              else
-                TextField(
-                  controller: subjectCtrl,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.book_rounded),
-                    hintText: l.examsSubjectLabel,
-                    filled: true,
-                    fillColor: cs.surfaceContainerHighest.withValues(
-                      alpha: 0.4,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 24),
-              Text(
-                l.examsTypeLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
+              _untisSheetSubjectSelector(
+                context: ctx,
+                subjects: subjects,
+                selectedSubject: selectedSubject,
+                onSelected: (value) => setDlg(() {
+                  selectedSubject = value;
+                  subjectCtrl.text = selectedSubject;
+                }),
+                fallbackController: subjectCtrl,
+                fallbackHint: l.examsSubjectLabel,
               ),
+              const SizedBox(height: 24),
+              _sheetSectionLabel(ctx, l.examsTypeLabel),
               const SizedBox(height: 12),
               TextField(
                 controller: typeCtrl,
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.label_important_rounded),
+                decoration: _untisSheetInputDecoration(
+                  ctx,
+                  prefixIcon: Icons.label_important_rounded,
                   hintText: l.examsTypeLabel,
-                  filled: true,
-                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
                 ),
               ),
-              const SizedBox(height: 24),
-              Text(
-                l.gradesDateLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Builder(
-                builder: (context) {
-                  final suggested = _findSubjectDates(selectedSubject);
-                  if (suggested.isEmpty) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: suggested.map((d) {
-                          final isSelected =
-                              d.year == selectedDate.year &&
-                              d.month == selectedDate.month &&
-                              d.day == selectedDate.day;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: ChoiceChip(
-                              label: Text(
-                                DateFormat(
-                                  'E, dd.MM.',
-                                  appLocaleNotifier.value,
-                                ).format(d),
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              selected: isSelected,
-                              onSelected: (val) {
-                                if (val) setDlg(() => selectedDate = d);
-                              },
-                              selectedColor: cs.primaryContainer,
-                              labelStyle: TextStyle(
-                                color: isSelected
-                                    ? cs.onPrimaryContainer
-                                    : cs.onSurfaceVariant,
-                              ),
-                            ),
-                          );
-                        }).toList(),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  for (final t in const [
+                    'Klausur',
+                    'Schulaufgabe',
+                    'Test',
+                    'Vokabeltest',
+                    'HÜ',
+                    'Mündlich',
+                  ])
+                    FilterChip(
+                      selected: typeCtrl.text == t,
+                      onSelected: (selected) => setDlg(() {
+                        typeCtrl.text = selected ? t : '';
+                      }),
+                      showCheckmark: false,
+                      shape: const StadiumBorder(),
+                      backgroundColor:
+                          cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                      selectedColor: cs.primaryContainer,
+                      side: BorderSide(
+                        color: typeCtrl.text == t
+                            ? cs.primary.withValues(alpha: 0.4)
+                            : cs.outlineVariant.withValues(alpha: 0.2),
+                        width: 1,
                       ),
-                    ),
-                  );
-                },
-              ),
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: ctx,
-                    initialDate: selectedDate,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime(2030),
-                  );
-                  if (picked != null) {
-                    setDlg(() => selectedDate = picked);
-                  }
-                },
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today_rounded, size: 20),
-                      const SizedBox(width: 12),
-                      Text(
-                        DateFormat(
-                          'dd. MMMM yyyy',
-                          _icuLocale(appLocaleNotifier.value),
-                        ).format(selectedDate),
+                      label: Text(
+                        t,
                         style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                          fontSize: 12,
+                          fontWeight: typeCtrl.text == t
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          color: typeCtrl.text == t
+                              ? cs.onPrimaryContainer
+                              : cs.onSurfaceVariant,
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                ],
               ),
               const SizedBox(height: 24),
-              Text(
-                l.examsNotesLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
+              _sheetSectionLabel(ctx, l.gradesDateLabel),
+              const SizedBox(height: 12),
+              _buildSuggestedSubjectDatesBar(
+                context: ctx,
+                subject: selectedSubject,
+                selectedDate: selectedDate,
+                onDateSelected: (d) => setDlg(() => selectedDate = d),
               ),
+              _untisSheetDatePickerField(
+                context: ctx,
+                selectedDate: selectedDate,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+                onDateSelected: (picked) => setDlg(() => selectedDate = picked),
+              ),
+              const SizedBox(height: 24),
+              _sheetSectionLabel(ctx, l.examsNotesLabel),
               const SizedBox(height: 12),
               TextField(
                 controller: descCtrl,
                 maxLines: 3,
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                decoration: InputDecoration(
-                  prefixIcon: const Padding(
-                    padding: EdgeInsets.only(bottom: 42),
-                    child: Icon(Icons.notes_rounded),
-                  ),
-                  hintText: l.examsNotesLabel,
-                  filled: true,
-                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                decoration:
+                    _untisSheetInputDecoration(
+                      ctx,
+                      prefixIcon: Icons.notes_rounded,
+                      hintText: l.examsNotesLabel,
+                    ).copyWith(
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.only(bottom: 42),
+                        child: Icon(Icons.notes_rounded),
+                      ),
+                    ),
               ),
               const SizedBox(height: 40),
               Row(

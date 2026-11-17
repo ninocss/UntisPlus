@@ -1,10 +1,10 @@
 enum Role { system, user, assistant }
 
 class Message {
-  const Message(this.role, this.content);
+  const Message(this.role, this.text);
 
   final Role role;
-  final String content;
+  final String text;
 }
 
 typedef FllamaLogger = void Function(String line);

@@ -1,6 +1,5 @@
 part of '../main.dart';
 
-// --- HAUPT NAVIGATION ---
 class MainNavigationScreen extends StatefulWidget {
   final bool showTutorialOnStart;
 
@@ -25,11 +24,9 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   final FocusNode _promptFocusNode = FocusNode();
-  late TabController _tabController;
   Timer? _streamRenderTimer;
   final StringBuffer _pendingStreamText = StringBuffer();
   DateTime? _lastStreamingHapticAt;
-  int _searchGeneration = 0;
   String _latestQuery = '';
   AiSearchResult? _latestResult;
   List<Map<String, dynamic>> _exams = [];
@@ -43,7 +40,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   DateTime _currentMonday = DateTime.now();
   bool _loading = true;
   bool _thinking = false;
-  bool _chatMode = false;
+  bool _cancelled = false;
+  final bool _chatMode = true;
   final List<Map<String, String>> _chatMessages = [];
   final List<AiChatAttachment> _attachments = [];
   final List<AiChatSession> _chatHistory = [];
@@ -53,22 +51,6 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      length: 2,
-      vsync: this,
-      animationDuration: Duration.zero,
-    );
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        final chatMode = _tabController.index == 1;
-        if (_chatMode != chatMode && mounted) {
-          setState(() => _chatMode = chatMode);
-        }
-        if (_chatMode) {
-          _scrollToBottom();
-        }
-      }
-    });
     _loadContext();
     _loadChatHistory();
     pendingAssistantPromptNotifier.addListener(_consumeNativeAssistantPrompt);
@@ -147,13 +129,11 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _chatMessages.clear();
       _latestResult = null;
       _latestQuery = '';
-      _chatMode = true;
       final nextGreeting = math.Random().nextInt(5);
       _aiGreetingIndex = nextGreeting == _aiGreetingIndex
           ? (nextGreeting + 1) % 5
           : nextGreeting;
     });
-    _selectAiTab(1, haptic: false);
     _hapticAction();
     // Check if we are inside a drawer (Navigator.canPop is true in drawers)
     if (Navigator.canPop(context)) {
@@ -166,14 +146,13 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _currentChatId = session.id;
       _chatMessages.clear();
       _chatMessages.addAll(session.messages);
-      _chatMode = true;
       _latestResult = null;
     });
-    _selectAiTab(1, haptic: false);
     _hapticSelection();
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
+    _scrollToBottom();
   }
 
   @override
@@ -182,7 +161,6 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _consumeNativeAssistantPrompt,
     );
     hiddenSubjectsNotifier.removeListener(_reloadContextForHiddenSubjects);
-    _tabController.dispose();
     _promptFocusNode.dispose();
     _streamRenderTimer?.cancel();
     _inputController.dispose();
@@ -197,24 +175,58 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   }
 
   void _hapticSelection() {
-    unawaited(HapticFeedback.selectionClick());
+    unawaited(AppHaptics.selection());
   }
 
   void _hapticAction() {
-    unawaited(HapticFeedback.mediumImpact());
+    unawaited(AppHaptics.confirmation());
   }
 
-  void _selectAiTab(int index, {bool haptic = true}) {
-    final chatMode = index == 1;
-    final changed = _chatMode != chatMode;
-    if (changed && mounted) {
-      setState(() => _chatMode = chatMode);
-      if (haptic) _hapticSelection();
+  void _stopGeneration() {
+    if (!_thinking) return;
+    _cancelled = true;
+    _streamRenderTimer?.cancel();
+    _streamRenderTimer = null;
+    _flushStreamingText();
+    setState(() {
+      _thinking = false;
+      _attachments.clear();
+    });
+    _hapticAction();
+    _saveChatHistory();
+  }
+
+  void _regenerateLastResponse() {
+    if (_thinking || _chatMessages.isEmpty) return;
+    String? lastUserQuery;
+    for (int i = _chatMessages.length - 1; i >= 0; i--) {
+      if (_chatMessages[i]['role'] == 'user') {
+        lastUserQuery = _chatMessages[i]['content'];
+        break;
+      }
     }
-    if (_tabController.index != index) {
-      _tabController.animateTo(index, duration: Duration.zero);
+    if (lastUserQuery == null || lastUserQuery.isEmpty) return;
+    if (_chatMessages.last['role'] == 'assistant') {
+      _chatMessages.removeLast();
     }
-    if (chatMode) _scrollToBottom();
+    if (_chatMessages.isNotEmpty && _chatMessages.last['role'] == 'user') {
+      _chatMessages.removeLast();
+    }
+    _hapticAction();
+    unawaited(_sendChat(lastUserQuery));
+  }
+
+  List<AiLessonCardData> _extractLessonsForMessage(String content) {
+    if (content.isEmpty) return const [];
+    try {
+      final res = _parseSearchResult(
+        query: '',
+        reply: content,
+      );
+      return res.lessons;
+    } catch (_) {
+      return const [];
+    }
   }
 
   AiSearchResult _parseSearchResult({
@@ -303,7 +315,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
           null,
           (min, value) => min == null || value < min ? value : min,
         );
-    return firstStart != null && nowMin < _toMinutes(firstStart);
+    return firstStart != null && nowMin < untisClockToMinutes(firstStart);
   }
 
   bool get _isDuringSchool {
@@ -312,8 +324,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     final nowMin = DateTime.now().hour * 60 + DateTime.now().minute;
     for (final lesson in lessons) {
       final map = lesson.cast<dynamic, dynamic>();
-      final start = _toMinutes((map['startTime'] as int?) ?? 800);
-      final end = _toMinutes((map['endTime'] as int?) ?? 845);
+      final start = untisClockToMinutes((map['startTime'] as int?) ?? 800);
+      final end = untisClockToMinutes((map['endTime'] as int?) ?? 845);
       if (nowMin >= start && nowMin <= end) return true;
     }
     return false;
@@ -330,16 +342,12 @@ class _AiAssistantPageState extends State<AiAssistantPage>
           null,
           (max, value) => max == null || value > max ? value : max,
         );
-    return lastEnd != null && nowMin > _toMinutes(lastEnd);
+    return lastEnd != null && nowMin > untisClockToMinutes(lastEnd);
   }
 
   Future<void> _loadContext() async {
     final now = DateTime.now();
-    final monday = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(Duration(days: now.weekday - 1));
+    final monday = mondayOfWeek(now);
 
     // The timetable tab is the source of truth while it is alive. Reading its
     // published snapshot avoids an outdated SharedPreferences cache claiming
@@ -465,11 +473,28 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     });
   }
 
-  String _resolvedSystemPrompt() {
+  String _nextFreeDaySummary() {
     final l = appL10nFor(appLocaleNotifier.value);
-    final template = aiSystemPromptTemplate.trim().isNotEmpty
-        ? aiSystemPromptTemplate
-        : _buildDefaultAiPromptTemplate(l);
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    for (int i = 0; i < 5; i++) {
+      final date = _currentMonday.add(Duration(days: i));
+      if (date.isBefore(todayStart)) continue;
+      final lessons = (_weekData[i] ?? const []).whereType<Map>().where(
+        (lesson) => lesson['code']?.toString().toLowerCase() != 'cancelled',
+      );
+      if (lessons.isEmpty) {
+        return DateFormat(
+          'EEEE, dd.MM.',
+          _icuLocale(appLocaleNotifier.value),
+        ).format(date);
+      }
+    }
+    return l.aiPromptNone;
+  }
+
+  String _replaceAiPromptVariables(String template) {
+    final l = appL10nFor(appLocaleNotifier.value);
     final friday = _currentMonday.add(const Duration(days: 4));
     final vars = <String, String>{
       '[today]': DateFormat(
@@ -495,6 +520,9 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       '[exams_json]': jsonEncode(_jsonSafeValue(_exams)),
       '[current_lesson]': _currentLessonSummary(),
       '[next_lesson]': _nextLessonSummary(),
+      '[homework]': _formatHomeworkForAi(l),
+      '[grades_summary]': _formatGradesForAi(l),
+      '[next_free_day]': _nextFreeDaySummary(),
     };
 
     var resolved = template;
@@ -503,92 +531,23 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     for (final entry in entries) {
       resolved = resolved.replaceAll(entry.key, entry.value);
     }
-    return '''$resolved
-
-${l.aiResponseFormat}''';
+    return resolved;
   }
 
   String _resolvedChatSystemPrompt() {
     final l = appL10nFor(appLocaleNotifier.value);
+    final isLocal = _normalizeAiProvider(aiProvider) == 'local';
     final template = aiSystemPromptTemplate.trim().isNotEmpty
         ? aiSystemPromptTemplate
+        : isLocal
+        ? _buildLocalAiPromptTemplate(l)
         : _buildDefaultAiPromptTemplate(l);
-    final friday = _currentMonday.add(const Duration(days: 4));
-    final vars = <String, String>{
-      '[today]': DateFormat(
-        'EEEE, dd. MMMM yyyy',
-        _icuLocale(appLocaleNotifier.value),
-      ).format(DateTime.now()),
-      '[today_iso]': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      '[locale]': appLocaleNotifier.value,
-      '[school_name]': schoolName.isEmpty ? '-' : schoolName,
-      '[school_url]': schoolUrl.isEmpty ? '-' : schoolUrl,
-      '[person_type]': '$personType',
-      '[person_id]': '$personId',
-      '[demo_mode]': '${demoModeNotifier.value}',
-      '[current_monday]': DateFormat('dd.MM.yyyy').format(_currentMonday),
-      '[current_friday]': DateFormat('dd.MM.yyyy').format(friday),
-      '[day_summary_today]': _daySummaryForPrompt(DateTime.now()),
-      '[day_summary_tomorrow]': _daySummaryForPrompt(
-        DateTime.now().add(const Duration(days: 1)),
-      ),
-      '[timetable]': _formatWeekForAi(_weekData, _currentMonday),
-      '[timetable_json]': jsonEncode(_jsonSafeValue(_weekData)),
-      '[exams]': _formatExamsForAi(),
-      '[exams_json]': jsonEncode(_jsonSafeValue(_exams)),
-      '[current_lesson]': _currentLessonSummary(),
-      '[next_lesson]': _nextLessonSummary(),
-    };
-
-    var resolved = template;
-    final entries = vars.entries.toList()
-      ..sort((a, b) => b.key.length.compareTo(a.key.length));
-    for (final entry in entries) {
-      resolved = resolved.replaceAll(entry.key, entry.value);
-    }
-
-    String personaInstruction = '';
-    switch (aiPersona) {
-      case 'strict':
-        personaInstruction = l.aiPersonaStrict;
-        break;
-      case 'buddy':
-        personaInstruction = l.aiPersonaBuddy;
-        break;
-      case 'helpful':
-      default:
-        personaInstruction = l.aiPersonaHelpful;
-        break;
-    }
+    final resolved = _replaceAiPromptVariables(template);
+    final suffix = isLocal ? _localChatPromptSuffix(l) : _chatPromptSuffix(l);
 
     return '''$resolved
 
-${l.aiAssistantIntro}
-$personaInstruction
-${l.aiAssistantRules}''';
-  }
-
-  Future<String> _requestProviderResponse(
-    String systemPrompt, {
-    required String userQuery,
-  }) {
-    final l = appL10nFor(appLocaleNotifier.value);
-    final runtime = _currentAiRuntimeConfiguration();
-    final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
-    return _aiRequestCoordinator.generate(
-      runtime: runtime,
-      spec: AiRequestSpec(
-        systemPrompt: systemPrompt,
-        userPrompt: userQuery,
-        temperature: 0.2,
-        maxTokens: 2600,
-        topP: aiTopP,
-        noReplyMessage: l.aiNoReply,
-        missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
-        customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
-        localModelMissingMessage: l.aiLocalModelLoadError,
-      ),
-    );
+$suffix''';
   }
 
   String _daySummaryForPrompt(DateTime date) {
@@ -605,8 +564,8 @@ ${l.aiAssistantRules}''';
     final buf = StringBuffer('$dateLabel:\n');
     for (final lsn in lessons.whereType<Map>()) {
       final lesson = lsn.cast<dynamic, dynamic>();
-      final start = _formatUntisTime(lesson['startTime'].toString());
-      final end = _formatUntisTime(lesson['endTime'].toString());
+      final start = formatUntisTime(lesson['startTime'].toString());
+      final end = formatUntisTime(lesson['endTime'].toString());
       final subj = lesson['_subjectLong']?.toString().isNotEmpty == true
           ? lesson['_subjectLong'].toString()
           : lesson['_subjectShort']?.toString() ?? '?';
@@ -655,7 +614,7 @@ ${l.aiAssistantRules}''';
         .map((lesson) {
           final subject =
               lesson['_subjectLong'] ?? lesson['_subjectShort'] ?? '?';
-          return '${_formatUntisTime(lesson['startTime'].toString())} $subject';
+          return '${formatUntisTime(lesson['startTime'].toString())} $subject';
         })
         .join(', ');
     return appL10nFor(
@@ -695,7 +654,7 @@ ${l.aiAssistantRules}''';
         return l.aiCurrentLessonSummary(
           subj.toString(),
           room.toString(),
-          _formatUntisTime(end.toString()),
+          formatUntisTime(end.toString()),
         );
       }
     }
@@ -719,7 +678,7 @@ ${l.aiAssistantRules}''';
         return l.aiNextLessonSummary(
           subj.toString(),
           room.toString(),
-          _formatUntisTime(start.toString()),
+          formatUntisTime(start.toString()),
         );
       }
     }
@@ -835,12 +794,8 @@ ${l.aiAssistantRules}''';
     if (bytes.isEmpty) return;
     if (bytes.length > 8 * 1024 * 1024) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              appL10nFor(appLocaleNotifier.value).aiAttachmentTooLarge,
-            ),
-          ),
+        context.showUntisSnackBar(
+          appL10nFor(appLocaleNotifier.value).aiAttachmentTooLarge,
         );
       }
       return;
@@ -1030,9 +985,7 @@ ${l.aiAssistantRules}''';
     if (approved != true) return;
     await _applyActions(actions);
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l.aiChangesApplied)));
+      context.showUntisSnackBar(l.aiChangesApplied);
     }
   }
 
@@ -1062,7 +1015,7 @@ ${l.aiAssistantRules}''';
       return;
     }
     _lastStreamingHapticAt = now;
-    unawaited(HapticFeedback.lightImpact());
+    unawaited(AppHaptics.lightImpact());
   }
 
   Future<void> _sendChat(String text) async {
@@ -1077,6 +1030,7 @@ ${l.aiAssistantRules}''';
       attachments: attachments,
       missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
       customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+      customModelMissingMessage: l.settingsAiStatusNeedsCustomModel,
       localModelMissingMessage: l.aiLocalModelLoadError,
       unsupportedAttachmentMessage: (_) =>
           'Dieses lokale Modell kann nur Textdateien lesen. Nutze für Bilder oder PDFs einen passenden Remote-Anbieter.',
@@ -1110,6 +1064,7 @@ ${l.aiAssistantRules}''';
             : '$text\n\n📎 ${attachments.map((attachment) => attachment.name).join(', ')}',
       });
       _thinking = true;
+      _cancelled = false;
     });
     _hapticAction();
 
@@ -1154,7 +1109,7 @@ ${l.aiAssistantRules}''';
       );
 
       await for (final chunk in stream) {
-        if (!mounted) break;
+        if (!mounted || _cancelled) break;
         _queueStreamingText(chunk);
       }
       _flushStreamingText();
@@ -1176,17 +1131,10 @@ ${l.aiAssistantRules}''';
       _saveChatHistory();
     } catch (e) {
       _flushStreamingText();
-      final message = e.toString();
-      final isApiError = message.contains('API:');
-      final isConfigError = message.contains('CONFIG:');
       setState(() {
         if (_chatMessages.isNotEmpty &&
             _chatMessages.last['role'] == 'assistant') {
-          final errorText = isConfigError
-              ? message.replaceFirst('Exception: CONFIG: ', '')
-              : isApiError
-              ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
-              : '${l.aiConnectionError} $e';
+          final errorText = _formatAiErrorDetail(e, l);
           final current = _chatMessages.last['content'] ?? '';
           _chatMessages.last['content'] = current.isEmpty
               ? errorText
@@ -1249,46 +1197,7 @@ ${l.aiAssistantRules}''';
   Future<void> _send() async {
     final text = _inputController.text.trim();
     if (text.isEmpty || _thinking) return;
-
-    if (_chatMode) {
-      await _sendChat(text);
-      return;
-    }
-
-    final generation = ++_searchGeneration;
-    _inputController.clear();
-    setState(() {
-      _latestQuery = text;
-      _latestResult = null;
-      _thinking = true;
-    });
-
-    try {
-      final reply = await _requestProviderResponse(
-        _resolvedSystemPrompt(),
-        userQuery: text,
-      );
-      if (!mounted || generation != _searchGeneration) return;
-      setState(() {
-        _latestResult = _parseSearchResult(query: text, reply: reply);
-      });
-    } catch (e) {
-      if (!mounted || generation != _searchGeneration) return;
-      final message = e.toString();
-      final l = appL10nFor(appLocaleNotifier.value);
-      final isApiError = message.contains('API:');
-      final isConfigError = message.contains('CONFIG:');
-      setState(() {
-        final reply = isConfigError
-            ? message.replaceFirst('Exception: CONFIG: ', '')
-            : isApiError
-            ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
-            : '${l.aiConnectionError} $e';
-        _latestResult = _parseSearchResult(query: text, reply: reply);
-      });
-    } finally {
-      if (mounted) setState(() => _thinking = false);
-    }
+    await _sendChat(text);
   }
 
   Future<void> _sendQuickPrompt(String prompt) async {
@@ -1332,56 +1241,16 @@ ${l.aiAssistantRules}''';
     }
   }
 
-  IconData _metricIcon(String label) {
-    final lower = label.toLowerCase();
-    if (lower.contains('stunde') ||
-        lower.contains('lesson') ||
-        lower.contains('kurs')) {
-      return Icons.school_rounded;
-    }
-    if (lower.contains('prüf') ||
-        lower.contains('exam') ||
-        lower.contains('test') ||
-        lower.contains('klausur')) {
-      return Icons.assignment_rounded;
-    }
-    if (lower.contains('raum') || lower.contains('room')) {
-      return Icons.meeting_room_rounded;
-    }
-    if (lower.contains('lehrer') || lower.contains('teacher')) {
-      return Icons.person_rounded;
-    }
-    if (lower.contains('frei') ||
-        lower.contains('free') ||
-        lower.contains('pause') ||
-        lower.contains('break')) {
-      return Icons.free_breakfast_rounded;
-    }
-    if (lower.contains('tag') ||
-        lower.contains('day') ||
-        lower.contains('heute')) {
-      return Icons.today_rounded;
-    }
-    if (lower.contains('zeit') || lower.contains('time')) {
-      return Icons.schedule_rounded;
-    }
-    return Icons.auto_awesome_rounded;
-  }
-
-  Widget _buildSearchLoadingState() {
-    return _AiAnalysisLoadingState(query: _latestQuery);
-  }
-
   Widget _buildSearchBar() {
     final l = appL10nFor(appLocaleNotifier.value);
     return _AiComposer(
       controller: _inputController,
       focusNode: _promptFocusNode,
-      mode: _chatMode ? _AiMode.chat : _AiMode.analysis,
+      mode: _AiMode.chat,
       thinking: _thinking,
       attachments: _attachments,
-      hintText: _chatMode ? l.aiInputHint : l.aiSearchHintPlaceholder,
-      onAttach: _chatMode && !_thinking
+      hintText: l.aiInputHint,
+      onAttach: !_thinking
           ? () => unawaited(_pickAssistantAttachment())
           : null,
       onRemoveAttachment: (index) {
@@ -1389,34 +1258,49 @@ ${l.aiAssistantRules}''';
         setState(() => _attachments.removeAt(index));
       },
       onSend: () => unawaited(_send()),
+      onStop: _stopGeneration,
       onClear: () => setState(_inputController.clear),
     );
   }
 
-  Widget _buildResultHeader(ColorScheme cs) {
-    final result = _latestResult;
-    if (result == null) {
-      if (_thinking) return _buildSearchLoadingState();
-      return _buildEmptyState(cs);
-    }
+  Widget _buildContextualSuggestionsBar(BuildContext context, ColorScheme cs) {
+    final chips = _buildContextualChips();
+    if (chips.isEmpty) return const SizedBox.shrink();
 
-    return _AiAnalysisResult(
-      result: result,
-      thinking: _thinking,
-      metricIcon: _metricIcon,
-      onSearchAgain: () {
-        final query = _latestQuery.trim();
-        if (query.isNotEmpty) unawaited(_sendQuickPrompt(query));
-      },
-      onClear: () => unawaited(_clearCurrentResult()),
+    const suggestionIcons = <IconData>[
+      Icons.trending_up_rounded,
+      Icons.lightbulb_outline_rounded,
+      Icons.edit_note_rounded,
+      Icons.schedule_rounded,
+      Icons.event_note_rounded,
+    ];
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            for (final item in chips.indexed) ...[
+              if (item.$1 > 0) const SizedBox(width: 8),
+              _AiSuggestionCard(
+                compact: true,
+                text: item.$2,
+                icon: suggestionIcons[item.$1 % suggestionIcons.length],
+                onTap: () {
+                  _hapticAction();
+                  unawaited(_sendQuickPrompt(item.$2));
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildChatView(ColorScheme cs) {
-    if (_chatMessages.isEmpty && !_thinking) {
-      return _buildEmptyState(cs);
-    }
-
+  Widget _buildChatView(BuildContext context, ColorScheme cs) {
     String? activeTitle;
     if (_currentChatId != null) {
       for (final session in _chatHistory) {
@@ -1435,7 +1319,12 @@ ${l.aiAssistantRules}''';
 
     return ListView(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        MediaQuery.paddingOf(context).top + 16,
+        16,
+        12,
+      ),
       children: [
         if (activeTitle != null && activeTitle.trim().isNotEmpty) ...[
           Padding(
@@ -1455,143 +1344,103 @@ ${l.aiAssistantRules}''';
         ],
         for (final entry in _chatMessages.indexed)
           _AiChatMessage(
+            key: ValueKey('msg_${entry.$1}_${entry.$2['role']}'),
             content: entry.$2['content'] ?? '',
             isUser: entry.$2['role'] == 'user',
             streaming:
                 _thinking &&
                 entry.$2['role'] == 'assistant' &&
                 entry.$1 == _chatMessages.length - 1,
+            lessons: entry.$2['role'] == 'assistant'
+                ? _extractLessonsForMessage(entry.$2['content'] ?? '')
+                : null,
+            onBackToTimetable: widget.onBackToTimetable,
+            onRegenerate:
+                entry.$2['role'] == 'assistant' &&
+                        entry.$1 == _chatMessages.length - 1 &&
+                        !_thinking
+                    ? _regenerateLastResponse
+                    : null,
           ),
         if (showExtraTyping)
-          const _AiChatMessage(content: '', isUser: false, streaming: true),
+          _AiChatMessage(
+            content: '',
+            isUser: false,
+            streaming: true,
+            onBackToTimetable: widget.onBackToTimetable,
+          ),
       ],
     );
   }
 
-  Widget _buildBody(ColorScheme cs) {
-    final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
-    final reduceMotion = _aiReduceMotion(context);
+  Widget _buildBody(BuildContext context, ColorScheme cs) {
+    final showSuggestions =
+        !_promptFocusNode.hasFocus || _chatMessages.isEmpty;
 
     return Column(
       children: [
         Expanded(
-          child: AnimatedSwitcher(
-            duration: reduceMotion
-                ? _kAiReducedMotion
-                : const Duration(milliseconds: 280),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeOutCubic,
-            transitionBuilder: (child, animation) {
-              if (reduceMotion) {
-                return FadeTransition(opacity: animation, child: child);
-              }
-              return FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.985, end: 1).animate(
-                    CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
-                    ),
-                  ),
-                  child: child,
-                ),
-              );
-            },
-            child: KeyedSubtree(
-              key: ValueKey(
-                _chatMode
-                    ? '${mode.name}_${_chatMessages.isEmpty && !_thinking}'
-                    : mode.name,
-              ),
-              child: _chatMode ? _buildChatView(cs) : _buildResultHeader(cs),
-            ),
-          ),
+          child: _chatMessages.isEmpty && !_thinking
+              ? _buildEmptyState(context, cs)
+              : _buildChatView(context, cs),
         ),
+        if (showSuggestions)
+          _buildContextualSuggestionsBar(context, cs),
         _buildSearchBar(),
       ],
     );
   }
 
-  Widget _buildEmptyState(ColorScheme cs) {
+  Widget _buildEmptyState(BuildContext context, ColorScheme cs) {
     final l = appL10nFor(appLocaleNotifier.value);
-    final analysisSuggestions = _buildContextualChips();
-    const suggestionIcons = <IconData>[
-      Icons.trending_up_rounded,
-      Icons.lightbulb_outline_rounded,
-      Icons.edit_note_rounded,
-    ];
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_chatMode) ...[
-            SizedBox(
-              width: double.infinity,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 54, 20, 20),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: cs.primaryContainer.withValues(alpha: 0.72),
-                      ),
-                      child: Icon(
-                        Icons.auto_awesome_rounded,
-                        color: cs.onPrimaryContainer,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      l.aiGreetings[_aiGreetingIndex % l.aiGreetings.length],
-                      textAlign: TextAlign.center,
-                      style: untisThemeTextStyle(
-                        context,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                  ],
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cs.primaryContainer.withValues(alpha: 0.72),
+                border: Border.all(
+                  color: cs.primary.withValues(alpha: 0.18),
+                  width: 1.5,
                 ),
               ),
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                color: cs.primary,
+                size: 28,
+              ),
             ),
-          ] else if (analysisSuggestions.isNotEmpty) ...[
+            const SizedBox(height: 18),
             Text(
-              l.aiTryIt,
+              l.aiGreetings[_aiGreetingIndex % l.aiGreetings.length],
+              textAlign: TextAlign.center,
               style: untisThemeTextStyle(
                 context,
-                fontSize: 13,
+                fontSize: 22,
                 fontWeight: FontWeight.w800,
+                color: cs.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l.aiAskAnything,
+              textAlign: TextAlign.center,
+              style: untisThemeTextStyle(
+                context,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w400,
                 color: cs.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final suggestion in analysisSuggestions.indexed)
-                  _AiSuggestionCard(
-                    compact: true,
-                    text: suggestion.$2,
-                    icon:
-                        suggestionIcons[suggestion.$1 % suggestionIcons.length],
-                    onTap: () {
-                      _hapticSelection();
-                      unawaited(_sendQuickPrompt(suggestion.$2));
-                    },
-                  ),
-              ],
-            ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -1600,7 +1449,6 @@ ${l.aiAssistantRules}''';
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = appL10nFor(appLocaleNotifier.value);
-    final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
 
     if (_loading) {
       return Scaffold(
@@ -1608,15 +1456,6 @@ ${l.aiAssistantRules}''';
         appBar: _mainTabHeaderAppBar(
           context,
           l.aiTitle,
-          bottom: _mainSectionTabBar(
-            context,
-            controller: _tabController,
-            onTap: _selectAiTab,
-            items: [
-              (icon: Icons.analytics_rounded, label: l.aiTabAnalysis),
-              (icon: Icons.chat_bubble_rounded, label: l.aiTabChat),
-            ],
-          ),
         ),
         body: Center(
           child: ConstrainedBox(
@@ -1661,12 +1500,27 @@ ${l.aiAssistantRules}''';
       );
     }
 
+    final activeTitle = _currentChatId != null
+        ? _chatHistory
+            .firstWhere(
+              (s) => s.id == _currentChatId,
+              orElse: () => AiChatSession(
+                id: '',
+                title: l.aiTitle,
+                messages: const [],
+                timestamp: DateTime.now(),
+              ),
+            )
+            .title
+        : l.aiTitle;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
+      extendBodyBehindAppBar: true,
       appBar: _mainTabHeaderAppBar(
         context,
-        l.aiTitle,
+        activeTitle,
         leading: IconButton(
           tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
           icon: const Icon(Icons.menu_rounded),
@@ -1675,25 +1529,61 @@ ${l.aiAssistantRules}''';
             widget.onOpenDrawer?.call(_buildSidebar());
           },
         ),
-        bottom: _mainSectionTabBar(
-          context,
-          controller: _tabController,
-          onTap: _selectAiTab,
-          items: [
-            (icon: Icons.analytics_rounded, label: l.aiTabAnalysis),
-            (icon: Icons.chat_bubble_rounded, label: l.aiTabChat),
-          ],
-        ),
+        actions: [
+          IconButton(
+            tooltip: l.aiTabChat,
+            icon: const Icon(Icons.edit_square, size: 20),
+            onPressed: () {
+              _hapticAction();
+              _startNewChat();
+            },
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(_aiRadius(16)),
+            ),
+            onSelected: (value) async {
+              if (value == 'clear') {
+                _startNewChat();
+              } else if (value == 'settings') {
+                await _openSettings();
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'clear',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete_sweep_outlined, size: 20),
+                    const SizedBox(width: 12),
+                    Text(l.aiClearResult),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    const Icon(Icons.settings_outlined, size: 20),
+                    const SizedBox(width: 12),
+                    Text(l.settingsTitle),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final body = _buildBody(cs);
+          final body = _buildBody(context, cs);
           if (!UntisLayout.isTablet(context)) return body;
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: _aiContentMaxWidth(context, mode),
+                maxWidth: _aiContentMaxWidth(context, _AiMode.chat),
               ),
               child: SizedBox(height: constraints.maxHeight, child: body),
             ),
@@ -1774,14 +1664,85 @@ class _MainTabTransitionLayer extends StatelessWidget {
       ignoring: !active,
       child: ExcludeSemantics(
         excluding: !active,
-        child: RepaintBoundary(child: content),
+        child: content,
       ),
+    );
+  }
+}
+
+class _TabletTabTransitionLayer extends StatelessWidget {
+  final int selectedIndex;
+  final int previousIndex;
+  final List<Widget> pages;
+
+  const _TabletTabTransitionLayer({
+    required this.selectedIndex,
+    required this.previousIndex,
+    required this.pages,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final duration = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 320);
+    const curve = Curves.easeOutCubic;
+
+    // Moving downwards (increasing index) -> incoming slides from bottom (positive Y)
+    // Moving upwards (decreasing index) -> incoming slides from top (negative Y)
+    final direction = selectedIndex >= previousIndex ? 1.0 : -1.0;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: pages.asMap().entries.map((entry) {
+        final index = entry.key;
+        final active = index == selectedIndex;
+        final itemDirection = active ? direction : -direction;
+
+        final targetOffset = active
+            ? Offset.zero
+            : Offset(0, 0.035 * itemDirection);
+        final targetScale = active ? 1.0 : 0.985;
+        final targetOpacity = active ? 1.0 : 0.0;
+
+        return IgnorePointer(
+          ignoring: !active,
+          child: ExcludeSemantics(
+            excluding: !active,
+            child: AnimatedSlide(
+              key: ValueKey('tablet-tab-slide-$index'),
+              offset: targetOffset,
+              duration: duration,
+              curve: curve,
+              child: AnimatedScale(
+                key: ValueKey('tablet-tab-scale-$index'),
+                scale: targetScale,
+                duration: duration,
+                curve: curve,
+                alignment: Alignment.center,
+                child: AnimatedOpacity(
+                  key: ValueKey('tablet-tab-opacity-$index'),
+                  opacity: targetOpacity,
+                  duration: duration,
+                  curve: Curves.easeOutCubic,
+                  child: TickerMode(
+                    enabled: active,
+                    child: entry.value,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(growable: false),
     );
   }
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
+  int _previousIndex = 0;
   bool _showTutorial = false;
   int _tutorialStep = 0;
   StreamSubscription<NotificationActionEvent>? _notificationActionSub;
@@ -1795,10 +1756,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     3: GlobalKey(debugLabel: 'tutorial-settings'),
     4: GlobalKey(debugLabel: 'tutorial-ai'),
   };
+  final Map<int, GlobalKey> _tutorialNavLabelKeys = {
+    0: GlobalKey(debugLabel: 'tutorial-timetable-label'),
+    1: GlobalKey(debugLabel: 'tutorial-exams-label'),
+    2: GlobalKey(debugLabel: 'tutorial-info-label'),
+    3: GlobalKey(debugLabel: 'tutorial-settings-label'),
+    4: GlobalKey(debugLabel: 'tutorial-ai-label'),
+  };
 
-  List<int> get _tutorialTargets => aiEnabledNotifier.value
-      ? const [0, 1, 2, 4, 3]
-      : const [0, 1, 2, 3];
+  List<int> get _tutorialTargets =>
+      aiEnabledNotifier.value ? const [0, 1, 2, 4, 3] : const [0, 1, 2, 3];
 
   @override
   void initState() {
@@ -1808,6 +1775,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
     pendingAssistantOpenNotifier.addListener(_openAssistantFromNative);
     aiEnabledNotifier.addListener(_onAiEnabledChanged);
+    _scheduleTabWarmup();
     if (pendingAssistantOpenNotifier.value) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _openAssistantFromNative(),
@@ -1845,15 +1813,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     if (account == null || demoModeNotifier.value) return;
     final wrapped = SchoolWrappedRepository();
     final remoteYear = await wrapped.refreshSchoolYear(account);
-    final currentYear = remoteYear ??
-        (await wrapped.years(account.id))
-            .where((year) => year.contains(DateTime.now()))
-            .firstOrNull;
+    final currentYear =
+        remoteYear ??
+        (await wrapped.years(
+          account.id,
+        )).where((year) => year.contains(DateTime.now())).firstOrNull;
     if (currentYear != null) {
-      unawaited(wrapped.captureCurrent(account, currentYear).catchError((_) {}));
+      unawaited(
+        wrapped.captureCurrent(account, currentYear).catchError((_) {}),
+      );
     }
     final pending = await wrapped.pendingAnnouncement(account.id);
-    if (!mounted || account.id != activeUntisAccountId || pending == null) return;
+    if (!mounted || account.id != activeUntisAccountId || pending == null) {
+      return;
+    }
     final l = appL10nFor(appLocaleNotifier.value);
     final open = await showDialog<bool>(
       context: context,
@@ -1875,9 +1848,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
     await wrapped.markAnnouncementSeen(account.id, pending);
     if (open == true && mounted && account.id == activeUntisAccountId) {
-      Navigator.of(context).push(_buildBouncyRoute(
-        SchoolWrappedStory(year: pending, account: account),
-      ));
+      Navigator.of(context).push(
+        _buildBouncyRoute(SchoolWrappedStory(year: pending, account: account)),
+      );
     }
 
     // Dev mode: show popup if dev server is reachable and style is 'popup'
@@ -1886,7 +1859,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         if (!mounted) return;
         final reachable = await checkDevServerReachable();
         if (!mounted) return;
-        if (reachable && devModeNotificationStyleNotifier.value == DevModeNotificationStyle.popup) {
+        if (reachable &&
+            devModeNotificationStyleNotifier.value ==
+                DevModeNotificationStyle.popup) {
           _showDevModePopup(context);
         }
       });
@@ -1906,7 +1881,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             Text(l.settingsDevModeUsingDevServer),
           ],
         ),
-        content: Text(l.settingsDevModeUsingDevServerDesc.replaceAll('{url}', url)),
+        content: Text(
+          l.settingsDevModeUsingDevServerDesc.replaceAll('{url}', url),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -1983,7 +1960,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   void _onAiEnabledChanged() {
     if (!mounted) return;
-    if (!aiEnabledNotifier.value && _selectedIndex == 4) _selectedIndex = 0;
+    if (!aiEnabledNotifier.value && _selectedIndex == 4) {
+      _previousIndex = _selectedIndex;
+      _selectedIndex = 0;
+    }
     setState(() {});
   }
 
@@ -1992,6 +1972,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     setState(() {
       _showTutorial = true;
       _tutorialStep = 0;
+      _previousIndex = _selectedIndex;
       _selectedIndex = _tutorialTargets.first;
     });
   }
@@ -2026,6 +2007,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
     setState(() {
       _tutorialStep += 1;
+      _previousIndex = _selectedIndex;
       _selectedIndex = _tutorialTargets[_tutorialStep];
     });
   }
@@ -2034,6 +2016,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     if (_tutorialStep <= 0) return;
     setState(() {
       _tutorialStep -= 1;
+      _previousIndex = _selectedIndex;
       _selectedIndex = _tutorialTargets[_tutorialStep];
     });
   }
@@ -2041,7 +2024,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void _onNavTap(int index) {
     if (index == 4 && !aiEnabledNotifier.value) return;
     if (_selectedIndex != index) {
-      setState(() => _selectedIndex = index);
+      setState(() {
+        _previousIndex = _selectedIndex;
+        _selectedIndex = index;
+      });
     }
   }
 
@@ -2086,76 +2072,101 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   Widget _buildPageWithBackground(BuildContext context, Widget page) {
-    final cs = Theme.of(context).colorScheme;
-    final tokens = untisThemeTokensOf(context);
-    if (tokens.id != AppThemeId.defaultTheme) {
-      return ValueListenableBuilder<int>(
-        valueListenable: backgroundAnimationStyleNotifier,
-        builder: (context, style, _) => ValueListenableBuilder<bool>(
-          valueListenable: backgroundAnimationsNotifier,
-          builder: (context, enabled, _) => ThemedBackdrop(
-            animate: enabled,
-            backgroundStyle: style,
-            child: page,
-          ),
-        ),
-      );
-    }
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(decoration: BoxDecoration(color: cs.surface)),
-        ),
-        Positioned.fill(
-          child: ValueListenableBuilder<bool>(
-            valueListenable: backgroundAnimationsNotifier,
-            builder: (context, enabled, _) {
-              if (!enabled) return const SizedBox.shrink();
-              return ValueListenableBuilder<int>(
-                valueListenable: backgroundAnimationStyleNotifier,
-                builder: (context, style, _) {
-                  return IgnorePointer(
-                    ignoring: true,
-                    child: Opacity(
-                      opacity: Theme.of(context).brightness == Brightness.dark
-                          ? 0.28
-                          : 0.2,
-                      child: _AnimatedBackgroundScene(style: style),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        Positioned.fill(child: page),
-      ],
-    );
+    return page;
   }
 
-  List<Widget> get _pages => <Widget>[
-    WeeklyTimetablePage(key: ValueKey(activeUntisAccountId ?? 'active')),
-    const ExamsPage(),
-    SchoolNotificationsPage(isActive: _selectedIndex == 2),
-    const SettingsHubPage(),
-    aiEnabledNotifier.value
-        ? AiAssistantPage(
-            key: ValueKey(activeUntisAccountId ?? 'active'),
-            onBackToTimetable: () => _onNavTap(0),
-            onOpenDrawer: (drawer) {
-              setState(() => _currentDrawer = drawer);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) _scaffoldKey.currentState?.openDrawer();
-              });
-            },
-          )
-        : const SizedBox.shrink(),
-  ];
+  // Tabs are created the first time they are shown (or by the idle warm-up
+  // below) and are then kept alive exactly like before. Not-yet-built tabs are
+  // empty placeholders, so launching no longer initializes every page at once.
+  final Set<int> _builtTabs = <int>{0};
+  Timer? _tabWarmupTimer;
+
+  // Widget instances are cached so unchanged tabs are not rebuilt whenever this
+  // screen calls setState (Flutter skips identical widget instances).
+  String? _timetablePageAccountId;
+  Widget? _timetablePage;
+  bool? _notificationsPageActive;
+  Widget? _notificationsPage;
+  String? _aiPageAccountId;
+  bool? _aiPageEnabled;
+  Widget? _aiPage;
+
+  /// Builds the remaining tabs one by one shortly after startup so that the
+  /// first visit to them is as instant as before, without delaying launch.
+  void _scheduleTabWarmup() {
+    var next = 1;
+    _tabWarmupTimer = Timer(const Duration(milliseconds: 1500), () {
+      _tabWarmupTimer = Timer.periodic(const Duration(milliseconds: 350), (
+        timer,
+      ) {
+        if (!mounted || next > 4) {
+          timer.cancel();
+          return;
+        }
+        final index = next++;
+        if (_builtTabs.add(index)) setState(() {});
+      });
+    });
+  }
+
+  Widget _cachedTimetablePage() {
+    final accountId = activeUntisAccountId ?? 'active';
+    if (_timetablePage == null || _timetablePageAccountId != accountId) {
+      _timetablePageAccountId = accountId;
+      _timetablePage = WeeklyTimetablePage(key: ValueKey(accountId));
+    }
+    return _timetablePage!;
+  }
+
+  Widget _cachedNotificationsPage() {
+    final active = _selectedIndex == 2;
+    if (_notificationsPage == null || _notificationsPageActive != active) {
+      _notificationsPageActive = active;
+      _notificationsPage = SchoolNotificationsPage(isActive: active);
+    }
+    return _notificationsPage!;
+  }
+
+  Widget _cachedAiPage() {
+    final enabled = aiEnabledNotifier.value;
+    final accountId = activeUntisAccountId ?? 'active';
+    if (_aiPage == null ||
+        _aiPageEnabled != enabled ||
+        _aiPageAccountId != accountId) {
+      _aiPageEnabled = enabled;
+      _aiPageAccountId = accountId;
+      _aiPage = enabled
+          ? AiAssistantPage(
+              key: ValueKey(accountId),
+              onBackToTimetable: () => _onNavTap(0),
+              onOpenDrawer: (drawer) {
+                setState(() => _currentDrawer = drawer);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _scaffoldKey.currentState?.openDrawer();
+                });
+              },
+            )
+          : const SizedBox.shrink();
+    }
+    return _aiPage!;
+  }
+
+  List<Widget> get _pages {
+    _builtTabs.add(_selectedIndex);
+    Widget tab(int index, Widget Function() build) =>
+        _builtTabs.contains(index) ? build() : const SizedBox.shrink();
+    return <Widget>[
+      tab(0, _cachedTimetablePage),
+      tab(1, () => const ExamsPage()),
+      tab(2, _cachedNotificationsPage),
+      tab(3, () => const SettingsHubPage()),
+      tab(4, _cachedAiPage),
+    ];
+  }
 
   @override
   void dispose() {
+    _tabWarmupTimer?.cancel();
     _notificationActionSub?.cancel();
     pendingAssistantOpenNotifier.removeListener(_openAssistantFromNative);
     aiEnabledNotifier.removeListener(_onAiEnabledChanged);
@@ -2174,185 +2185,166 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       drawer: _currentDrawer,
       extendBody: true,
       resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: [
-          Row(
-            children: [
-              if (isTablet)
-                SafeArea(
-                  child: NavigationRail(
+      body: _AnimatedBackground(
+        child: Stack(
+          children: [
+            Row(
+              children: [
+                if (isTablet)
+                  TabletGlassSidebar(
                     selectedIndex: _selectedIndex,
                     onDestinationSelected: _onNavTap,
-                    labelType: NavigationRailLabelType.selected,
-                    groupAlignment: 0,
-                    destinations: [
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.watch_later_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[0],
-                          child: const Icon(Icons.watch_later_rounded),
-                        ),
-                        label: Text(l.timetableTitle),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.event_note_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[1],
-                          child: const Icon(Icons.event_note_rounded),
-                        ),
-                        label: Text(l.examsTitle),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.campaign_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[2],
-                          child: const Icon(Icons.campaign_rounded),
-                        ),
-                        label: Text(l.navInfo),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.settings_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[3],
-                          child: const Icon(Icons.settings_rounded),
-                        ),
-                        label: Text(l.navMenu),
-                      ),
-                      if (aiEnabledNotifier.value)
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.auto_awesome_outlined),
-                          selectedIcon: KeyedSubtree(
-                            key: _tutorialNavKeys[4],
-                            child: const Icon(Icons.auto_awesome_rounded),
-                          ),
-                          label: Text(l.navAi),
-                        ),
-                    ],
+                    showAi: aiEnabledNotifier.value,
+                    tutorialKeys: _tutorialNavKeys,
+                    tutorialLabelKeys: _tutorialNavLabelKeys,
                   ),
-                ),
-              Expanded(
-                child: MediaQuery(
-                  data: mq.copyWith(
-                    padding: mq.padding.copyWith(
-                      bottom: isTablet
-                          ? mq.padding.bottom
-                          : mq.padding.bottom + 104,
+                Expanded(
+                  child: MediaQuery(
+                    data: mq.copyWith(
+                      padding: mq.padding.copyWith(
+                        bottom: isTablet
+                            ? mq.padding.bottom
+                            : mq.padding.bottom + 104,
+                      ),
                     ),
-                  ),
-                  child: ValueListenableBuilder<bool>(
-                    valueListenable: mainTabFadeUpEnabledNotifier,
-                    builder: (context, animationsEnabled, _) {
-                      final pages = _pages;
-
-                      if (!animationsEnabled ||
-                          MediaQuery.of(context).disableAnimations) {
-                        return IndexedStack(
-                          index: _selectedIndex,
-                          children: pages
-                              .asMap()
-                              .entries
-                              .map((entry) {
-                                final active = entry.key == _selectedIndex;
-                                return TickerMode(
-                                  enabled: active,
-                                  child: _buildPageWithBackground(
+                    child: isTablet
+                        ? _TabletTabTransitionLayer(
+                            selectedIndex: _selectedIndex,
+                            previousIndex: _previousIndex,
+                            pages: _pages
+                                .asMap()
+                                .entries
+                                .map(
+                                  (entry) => _buildPageWithBackground(
                                     context,
                                     entry.value,
                                   ),
-                                );
-                              })
-                              .toList(growable: false),
-                        );
-                      }
+                                )
+                                .toList(growable: false),
+                          )
+                        : ValueListenableBuilder<bool>(
+                            valueListenable: mainTabFadeUpEnabledNotifier,
+                            builder: (context, animationsEnabled, _) {
+                              final pages = _pages;
 
-                      return ValueListenableBuilder<int>(
-                        valueListenable: pageTransitionNotifier,
-                        builder: (context, transitionType, _) {
-                          return Stack(
-                            fit: StackFit.expand,
+                        if (!animationsEnabled ||
+                            MediaQuery.of(context).disableAnimations) {
+                          return IndexedStack(
+                            index: _selectedIndex,
                             children: pages
                                 .asMap()
                                 .entries
                                 .map((entry) {
                                   final active = entry.key == _selectedIndex;
-                                  return _MainTabTransitionLayer(
-                                    key: ValueKey(
-                                      'main-tab-layer-${entry.key}',
-                                    ),
-                                    active: active,
-                                    relativePosition:
-                                        entry.key - _selectedIndex,
-                                    transitionType: transitionType,
-                                    child: TickerMode(
-                                      enabled: active,
-                                      child: _buildPageWithBackground(
-                                        context,
-                                        entry.value,
-                                      ),
+                                  return TickerMode(
+                                    enabled: active,
+                                    child: _buildPageWithBackground(
+                                      context,
+                                      entry.value,
                                     ),
                                   );
                                 })
                                 .toList(growable: false),
                           );
-                        },
-                      );
-                    },
+                        }
+
+                        return ValueListenableBuilder<int>(
+                          valueListenable: pageTransitionNotifier,
+                          builder: (context, transitionType, _) {
+                            return Stack(
+                              fit: StackFit.expand,
+                              children: pages
+                                  .asMap()
+                                  .entries
+                                  .map((entry) {
+                                    final active = entry.key == _selectedIndex;
+                                    return _MainTabTransitionLayer(
+                                      key: ValueKey(
+                                        'main-tab-layer-${entry.key}',
+                                      ),
+                                      active: active,
+                                      relativePosition:
+                                          entry.key - _selectedIndex,
+                                      transitionType: transitionType,
+                                      child: TickerMode(
+                                        enabled: active,
+                                        child: _buildPageWithBackground(
+                                          context,
+                                          entry.value,
+                                        ),
+                                      ),
+                                    );
+                                  })
+                                  .toList(growable: false),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          // Floating nav bar
-          if (!isTablet)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: mq.padding.bottom + 16,
-              child: ValueListenableBuilder<String>(
-                valueListenable: appLocaleNotifier,
-                builder: (context, locale, _) {
-                  return ListenableBuilder(
-                    listenable: Listenable.merge([
-                      unreadTimetableChangesNotifier,
-                      unreadInboxMessagesNotifier,
-                    ]),
-                    builder: (context, _) => _buildFloatingNavBar(context, cs),
-                  );
-                },
-              ),
+              ],
             ),
-          if (_showTutorial)
-            Positioned.fill(
-              child: _TutorialSpotlightOverlay(
-                key: ValueKey(_tutorialStep),
-                targetKey: _tutorialNavKeys[_tutorialTargets[_tutorialStep]],
-                step: _tutorialStep,
-                totalSteps: _tutorialTargets.length,
-                title: _tutorialTitle(l),
-                description: _tutorialDesc(l),
-                onBack: _tutorialStep == 0 ? null : _previousTutorialStep,
-                onNext: _nextTutorialStep,
-                onSkip: _skipTutorial,
-                isLast: _tutorialStep == _tutorialTargets.length - 1,
+            // Floating nav bar
+            if (!isTablet)
+              Positioned(
+                key: const ValueKey('main-floating-nav-bar'),
+                left: 16,
+                right: 16,
+                bottom: mq.padding.bottom + 16,
+                child: ValueListenableBuilder<String>(
+                  valueListenable: appLocaleNotifier,
+                  builder: (context, locale, _) {
+                    return ListenableBuilder(
+                      listenable: Listenable.merge([
+                        unreadTimetableChangesNotifier,
+                        unreadInboxMessagesNotifier,
+                      ]),
+                      builder: (context, _) =>
+                          _buildFloatingNavBar(context, cs),
+                    );
+                  },
+                ),
               ),
+            if (_showTutorial)
+              Positioned.fill(
+                child: _TutorialSpotlightOverlay(
+                  key: ValueKey(_tutorialStep),
+                  targetKey: _tutorialNavKeys[_tutorialTargets[_tutorialStep]],
+                  labelKey:
+                      _tutorialNavLabelKeys[_tutorialTargets[_tutorialStep]],
+                  step: _tutorialStep,
+                  totalSteps: _tutorialTargets.length,
+                  title: _tutorialTitle(l),
+                  description: _tutorialDesc(l),
+                  onBack: _tutorialStep == 0 ? null : _previousTutorialStep,
+                  onNext: _nextTutorialStep,
+                  onSkip: _skipTutorial,
+                  isLast: _tutorialStep == _tutorialTargets.length - 1,
+                ),
+              ),
+            // Dev mode indicator bar (green bar at top when dev server is reachable)
+            ValueListenableBuilder<bool>(
+              valueListenable: devServerReachableNotifier,
+              builder: (context, reachable, _) {
+                if (!reachable) return const SizedBox.shrink();
+                return ValueListenableBuilder<DevModeNotificationStyle>(
+                  valueListenable: devModeNotificationStyleNotifier,
+                  builder: (context, style, _) {
+                    if (style != DevModeNotificationStyle.bar) {
+                      return const SizedBox.shrink();
+                    }
+                    return _DevModeIndicatorBar(
+                      serverUrl: normalizeDevServerUrl(
+                        devServerUrlNotifier.value,
+                      ),
+                    );
+                  },
+                );
+              },
             ),
-          // Dev mode indicator bar (green bar at top when dev server is reachable)
-          ValueListenableBuilder<bool>(
-            valueListenable: devServerReachableNotifier,
-            builder: (context, reachable, _) {
-              if (!reachable) return const SizedBox.shrink();
-              return ValueListenableBuilder<DevModeNotificationStyle>(
-                valueListenable: devModeNotificationStyleNotifier,
-                builder: (context, style, _) {
-                  if (style != DevModeNotificationStyle.bar) return const SizedBox.shrink();
-                  return _DevModeIndicatorBar(
-                    serverUrl: normalizeDevServerUrl(devServerUrlNotifier.value),
-                  );
-                },
-              );
-            },
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2361,7 +2353,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final timetableSelected = _selectedIndex == 0;
     final l = appL10nFor(appLocaleNotifier.value);
 
-    // ---- Secondary items (indices 1-4) shown in the pill bar ----
     final items = [
       _NavItem(
         icon: Icons.settings_outlined,
@@ -2369,6 +2360,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         label: l.navMenu,
         pageIndex: 3,
         tutorialKey: _tutorialNavKeys[3],
+        tutorialLabelKey: _tutorialNavLabelKeys[3],
         tutorialHighlight: _isTutorialTarget(3),
       ),
       _NavItem(
@@ -2377,6 +2369,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         label: l.navInfo,
         pageIndex: 2,
         tutorialKey: _tutorialNavKeys[2],
+        tutorialLabelKey: _tutorialNavLabelKeys[2],
         tutorialHighlight: _isTutorialTarget(2),
         badgeCount: unreadInboxMessagesNotifier.value,
       ),
@@ -2386,6 +2379,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         label: l.navExams,
         pageIndex: 1,
         tutorialKey: _tutorialNavKeys[1],
+        tutorialLabelKey: _tutorialNavLabelKeys[1],
         tutorialHighlight: _isTutorialTarget(1),
       ),
       if (aiEnabledNotifier.value)
@@ -2395,6 +2389,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           label: l.navAi,
           pageIndex: 4,
           tutorialKey: _tutorialNavKeys[4],
+          tutorialLabelKey: _tutorialNavLabelKeys[4],
           tutorialHighlight: _isTutorialTarget(4),
         ),
     ];
@@ -2411,28 +2406,31 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // ---- Pill nav bar ----
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 560),
-              curve: _kSmoothBounce,
-              builder: (context, val, child) {
-                return Transform.translate(
-                  offset: Offset(0, (1 - val) * 26),
-                  child: Opacity(opacity: val.clamp(0, 1), child: child),
-                );
-              },
-              child: _ExpressiveNavBar(
-                items: items,
-                selectedIndex: selectedBarIndex,
-                colorScheme: cs,
-                onTap: (pageIndex) => _onNavTap(pageIndex),
+            Flexible(
+              child: LayoutBuilder(
+                builder: (context, bounds) => TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 560),
+                  curve: _kSmoothBounce,
+                  builder: (context, val, child) {
+                    return Transform.translate(
+                      offset: Offset(0, (1 - val) * 26),
+                      child: Opacity(opacity: val.clamp(0, 1), child: child),
+                    );
+                  },
+                  child: _ExpressiveNavBar(
+                    maxWidth: bounds.maxWidth,
+                    items: items,
+                    selectedIndex: selectedBarIndex,
+                    colorScheme: cs,
+                    onTap: (pageIndex) => _onNavTap(pageIndex),
+                  ),
+                ),
               ),
             ),
 
             const SizedBox(width: 12),
 
-            // ---- FAB timetable button ----
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
               duration: const Duration(milliseconds: 620),
@@ -2534,12 +2532,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Material You Expressive Navigation Bar
-// ---------------------------------------------------------------------------
-
-class _TutorialSpotlightOverlay extends StatelessWidget {
+class _TutorialSpotlightOverlay extends StatefulWidget {
   final GlobalKey? targetKey;
+  final GlobalKey? labelKey;
   final int step;
   final int totalSteps;
   final String title;
@@ -2552,6 +2547,7 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
   const _TutorialSpotlightOverlay({
     super.key,
     required this.targetKey,
+    this.labelKey,
     required this.step,
     required this.totalSteps,
     required this.title,
@@ -2562,8 +2558,50 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
     required this.isLast,
   });
 
-  Rect? _targetRect() {
-    final targetContext = targetKey?.currentContext;
+  @override
+  State<_TutorialSpotlightOverlay> createState() =>
+      _TutorialSpotlightOverlayState();
+}
+
+class _TutorialSpotlightOverlayState extends State<_TutorialSpotlightOverlay> {
+  bool _expandToLabel = false;
+  bool _labelExpansionScheduled = false;
+  Timer? _labelExpansionTimer;
+
+  GlobalKey? get targetKey => widget.targetKey;
+  GlobalKey? get labelKey => widget.labelKey;
+  int get step => widget.step;
+  int get totalSteps => widget.totalSteps;
+  String get title => widget.title;
+  String get description => widget.description;
+  VoidCallback? get onBack => widget.onBack;
+  VoidCallback get onNext => widget.onNext;
+  VoidCallback get onSkip => widget.onSkip;
+  bool get isLast => widget.isLast;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_labelExpansionScheduled || labelKey == null) return;
+    _labelExpansionScheduled = true;
+
+    final isTablet = MediaQuery.sizeOf(context).width >= 720;
+    final delay = isTablet
+        ? Duration.zero
+        : AppMotion.duration(context, const Duration(milliseconds: 560));
+    _labelExpansionTimer = Timer(delay, () {
+      if (mounted) setState(() => _expandToLabel = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _labelExpansionTimer?.cancel();
+    super.dispose();
+  }
+
+  Rect? _rectForKey(GlobalKey? key) {
+    final targetContext = key?.currentContext;
     final renderObject = targetContext?.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.hasSize) return null;
     return renderObject.localToGlobal(Offset.zero) & renderObject.size;
@@ -2589,14 +2627,14 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
           height: 56,
         );
         final bounds = Offset.zero & size;
-        final rawTarget = _targetRect() ?? fallback;
-        final target = (tablet
-                ? Rect.fromCenter(
-                    center: rawTarget.center,
-                    width: 72,
-                    height: 76,
-                  ).inflate(2)
-                : rawTarget.inflate(5))
+        final rawTarget = _rectForKey(targetKey) ?? fallback;
+        final labelTarget = _rectForKey(labelKey);
+        final combinedTarget = labelTarget == null
+            ? rawTarget
+            : rawTarget.expandToInclude(labelTarget);
+        final startTarget = rawTarget.inflate(tablet ? 8 : 5).intersect(bounds);
+        final endTarget = (_expandToLabel ? combinedTarget : rawTarget)
+            .inflate(tablet ? 8 : 5)
             .intersect(bounds);
 
         final callout = _TutorialCallout(
@@ -2610,64 +2648,72 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
           nextLabel: isLast ? l.tutorialDone : l.onboardingNext,
         );
 
-        return Stack(
-          children: [
-            if (useBackdropBlur)
+        return TweenAnimationBuilder<Rect>(
+          tween: _SpotlightRectTween(begin: startTarget, end: endTarget),
+          duration: AppMotion.duration(
+            context,
+            const Duration(milliseconds: 360),
+          ),
+          curve: Curves.easeOutCubic,
+          builder: (context, target, _) => Stack(
+            children: [
+              if (useBackdropBlur)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ClipPath(
+                      clipper: _TutorialSpotlightClipper(target),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: math.min(tokens.blurSigma, 5),
+                          sigmaY: math.min(tokens.blurSigma, 5),
+                        ),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  ),
+                ),
               Positioned.fill(
                 child: IgnorePointer(
-                  child: ClipPath(
-                    clipper: _TutorialSpotlightClipper(target),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(
-                        sigmaX: math.min(tokens.blurSigma, 5),
-                        sigmaY: math.min(tokens.blurSigma, 5),
-                      ),
-                      child: const SizedBox.expand(),
+                  child: CustomPaint(
+                    painter: _TutorialSpotlightPainter(
+                      target: target,
+                      scrim: useBackdropBlur
+                          ? Colors.black.withValues(alpha: 0.12)
+                          : Colors.black.withValues(alpha: 0.58),
+                      accent: cs.primary,
                     ),
                   ),
                 ),
               ),
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _TutorialSpotlightPainter(
-                    target: target,
-                    scrim: useBackdropBlur
-                        ? Colors.black.withValues(alpha: 0.12)
-                        : Colors.black.withValues(alpha: 0.58),
-                    accent: cs.primary,
+              if (tablet)
+                Positioned(
+                  left: math.min(
+                    math.max(target.right + 18, 94),
+                    math.max(16, size.width - 406),
                   ),
+                  top: (target.center.dy - 130).clamp(
+                    mq.padding.top + 16,
+                    math.max(mq.padding.top + 16, size.height - 310),
+                  ),
+                  width: math.min(380, size.width - 110),
+                  child: callout,
+                )
+              else if (target.top > size.height * 0.48)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: size.height - target.top + 16,
+                  child: callout,
+                )
+              else
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  top: target.bottom + 16,
+                  child: callout,
                 ),
-              ),
-            ),
-            if (tablet)
-              Positioned(
-                left: math.min(
-                  math.max(target.right + 18, 94),
-                  math.max(16, size.width - 406),
-                ),
-                top: (target.center.dy - 130).clamp(
-                  mq.padding.top + 16,
-                  math.max(mq.padding.top + 16, size.height - 310),
-                ),
-                width: math.min(380, size.width - 110),
-                child: callout,
-              )
-            else if (target.top > size.height * 0.48)
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: size.height - target.top + 16,
-                child: callout,
-              )
-            else
-              Positioned(
-                left: 16,
-                right: 16,
-                top: target.bottom + 16,
-                child: callout,
-              ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -2881,6 +2927,7 @@ class _NavItem {
   final String label;
   final int pageIndex;
   final GlobalKey? tutorialKey;
+  final GlobalKey? tutorialLabelKey;
   final bool tutorialHighlight;
   final int badgeCount;
 
@@ -2890,6 +2937,7 @@ class _NavItem {
     required this.label,
     required this.pageIndex,
     this.tutorialKey,
+    this.tutorialLabelKey,
     this.tutorialHighlight = false,
     this.badgeCount = 0,
   });
@@ -2898,12 +2946,14 @@ class _NavItem {
 /// A pill-indicator navigation bar whose indicator morphs via spring physics
 /// between destinations – matching the Material 3 Expressive spec.
 class _ExpressiveNavBar extends StatefulWidget {
+  final double maxWidth;
   final List<_NavItem> items;
   final int selectedIndex; // -1 = nothing selected
   final ColorScheme colorScheme;
   final void Function(int pageIndex) onTap;
 
   const _ExpressiveNavBar({
+    required this.maxWidth,
     required this.items,
     required this.selectedIndex,
     required this.colorScheme,
@@ -3010,6 +3060,20 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     if (oldWidget.selectedIndex == widget.selectedIndex) return;
 
     final newSel = widget.selectedIndex;
+    if (!AppMotion.enabled(context)) {
+      for (var i = 0; i < _labelControllers.length; i++) {
+        _labelControllers[i].value = i == newSel ? 1 : 0;
+      }
+      _visibilityController.value = newSel >= 0 ? 1 : 0;
+      _targetSel = newSel >= 0 ? newSel : 0;
+      _targetFrac = newSel >= 0 ? 1 : 0;
+      final layout = _layoutFor(_targetSel, _targetFrac);
+      _fromLeft = _lastLeft = layout.left;
+      _fromWidth = _lastWidth = layout.width;
+      _fromWidths = _lastWidths = List.of(layout.widths);
+      _morphController.value = 1;
+      return;
+    }
     final wasHidden = _pillAlpha.value < 0.05;
 
     final oldSel = oldWidget.selectedIndex;
@@ -3047,7 +3111,9 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
       _visibilityController.forward();
     }
 
-    if (newSel >= 0 && newSel < _iconWiggle.length) {
+    if (AppMotion.enabled(context) &&
+        newSel >= 0 &&
+        newSel < _iconWiggle.length) {
       _iconWiggle[newSel].forward(from: 0);
     }
 
@@ -3055,6 +3121,10 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
   }
 
   void _animateMorph() {
+    if (!AppMotion.enabled(context)) {
+      _morphController.value = 1;
+      return;
+    }
     _morphController.value = 0;
     final spring = SpringDescription.withDampingRatio(
       mass: 1,
@@ -3074,9 +3144,16 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     int sel,
     double frac,
   ) {
+    final remainingWidth =
+        widget.maxWidth -
+        2 * _barHPad -
+        (widget.items.length - 1) * (_itemWidth + _itemGap);
     final widths = List.generate(widget.items.length, (i) {
       if (sel >= 0 && i == sel) {
-        return _pillBaseWidth + frac * _pillExpandedExtra;
+        return math.min(
+          _pillBaseWidth + frac * _pillExpandedExtra,
+          remainingWidth.clamp(_pillBaseWidth, double.infinity),
+        );
       }
       return _itemWidth;
     });
@@ -3139,7 +3216,7 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
             ..._labelControllers,
           ]),
           builder: (context, _) {
-            final t = _morphController.value.clamp(0.0, 1.1);
+            final t = _morphController.value.clamp(0.0, 1.0);
             final to = _layoutFor(_targetSel, _targetFrac);
 
             // Interpolate every item width (and the pill rect) from the frozen
@@ -3169,7 +3246,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // ---- Morphing pill indicator ----
                   Positioned(
                     left: pillLeft - _barHPad,
                     child: Opacity(
@@ -3191,7 +3267,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                     ),
                   ),
 
-                  // ---- Items row ----
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -3215,118 +3290,125 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     final selected = widget.selectedIndex == i;
     final wiggle = _iconWiggle[i];
 
-    return GestureDetector(
+    return Semantics(
       key: item.tutorialKey,
-      onTap: () {
-        HapticFeedback.lightImpact();
-        widget.onTap(item.pageIndex);
-      },
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: width,
-        height: _barHeight,
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // --- Icon with wiggle ---
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  AnimatedBuilder(
-                    animation: wiggle,
-                    builder: (context, child) {
-                      // Spring-style wiggle: sin wave decaying
-                      final t = wiggle.value;
-                      final angle = math.sin(t * math.pi * 4) * 0.08 * (1 - t);
-                      return Transform.rotate(angle: angle, child: child);
-                    },
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 280),
-                      switchInCurve: _kSmoothBounce,
-                      switchOutCurve: Curves.easeOut,
-                      transitionBuilder: (child, anim) => ScaleTransition(
-                        scale: Tween(begin: 0.7, end: 1.0).animate(anim),
-                        child: FadeTransition(opacity: anim, child: child),
-                      ),
-                      child: Icon(
-                        selected ? item.selectedIcon : item.icon,
-                        key: ValueKey('${item.pageIndex}_$selected'),
-                        size: selected ? 22 : 24,
-                        color: selected
-                            ? (Theme.of(context).brightness == Brightness.dark
-                                  ? cs.onPrimaryContainer
-                                  : cs.onPrimary)
-                            : item.tutorialHighlight
-                            ? cs.tertiary
-                            : cs.onSurfaceVariant.withValues(alpha: 0.8),
-                      ),
-                    ),
-                  ),
-                  if (item.badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -5,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 3.5,
-                          vertical: 1,
+      button: true,
+      selected: selected,
+      label: item.label,
+      value: item.badgeCount > 0 ? '${item.badgeCount}' : null,
+      child: GestureDetector(
+        onTap: () {
+          if (!selected) unawaited(AppHaptics.lightImpact());
+          widget.onTap(item.pageIndex);
+        },
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: width,
+          height: _barHeight,
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    AnimatedBuilder(
+                      animation: wiggle,
+                      builder: (context, child) {
+                        // Spring-style wiggle: sin wave decaying
+                        final t = wiggle.value;
+                        final angle =
+                            math.sin(t * math.pi * 4) * 0.08 * (1 - t);
+                        return Transform.rotate(angle: angle, child: child);
+                      },
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: _kSmoothBounce,
+                        switchOutCurve: Curves.easeOut,
+                        transitionBuilder: (child, anim) => ScaleTransition(
+                          scale: Tween(begin: 0.7, end: 1.0).animate(anim),
+                          child: FadeTransition(opacity: anim, child: child),
                         ),
-                        constraints: const BoxConstraints(minWidth: 13),
-                        decoration: BoxDecoration(
-                          color: cs.error,
-                          borderRadius: BorderRadius.circular(9),
-                          border: Border.all(
-                            color: cs.surfaceContainerHigh,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Text(
-                          item.badgeCount > 99 ? '99+' : '${item.badgeCount}',
-                          style: TextStyle(
-                            color: cs.onError,
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w800,
-                            height: 1,
-                          ),
-                          textAlign: TextAlign.center,
+                        child: Icon(
+                          selected ? item.selectedIcon : item.icon,
+                          key: ValueKey('${item.pageIndex}_$selected'),
+                          size: selected ? 22 : 24,
+                          color: selected
+                              ? (Theme.of(context).brightness == Brightness.dark
+                                    ? cs.onPrimaryContainer
+                                    : cs.onPrimary)
+                              : item.tutorialHighlight
+                              ? cs.tertiary
+                              : cs.onSurfaceVariant.withValues(alpha: 0.8),
                         ),
                       ),
                     ),
-                ],
-              ),
+                    if (item.badgeCount > 0)
+                      Positioned(
+                        right: -6,
+                        top: -5,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 3.5,
+                            vertical: 1,
+                          ),
+                          constraints: const BoxConstraints(minWidth: 13),
+                          decoration: BoxDecoration(
+                            color: cs.error,
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(
+                              color: cs.surfaceContainerHigh,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            item.badgeCount > 99 ? '99+' : '${item.badgeCount}',
+                            style: TextStyle(
+                              color: cs.onError,
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
+                              height: 1,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
 
-              // --- Label (slides in/out with the morph) ---
-              Flexible(
-                child: ClipRect(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: _labelControllers[i].value,
-                    child: Opacity(
-                      opacity: _labelControllers[i].value,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: Text(
-                          item.label,
-                          style: untisThemeTextStyle(
-                            context,
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? cs.onPrimaryContainer
-                                : cs.onPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13.5,
+                Flexible(
+                  child: ClipRect(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: _labelControllers[i].value,
+                      child: Opacity(
+                        opacity: _labelControllers[i].value,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Text(
+                            item.label,
+                            key: item.tutorialLabelKey,
+                            style: untisThemeTextStyle(
+                              context,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? cs.onPrimaryContainer
+                                  : cs.onPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13.5,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.clip,
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -3334,10 +3416,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
   }
 }
 
-// ---------------------------------------------------------------------------
-
-// Bouncy press helper (unchanged)
-// ---------------------------------------------------------------------------
 class _BouncyButton extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
@@ -3388,21 +3466,21 @@ class _BouncyButtonState extends State<_BouncyButton>
     return GestureDetector(
       onTapDown: (_) {
         if (_tapLocked) return;
-        _controller.forward();
-        HapticFeedback.lightImpact();
+        if (AppMotion.enabled(context)) _controller.forward();
+        unawaited(AppHaptics.lightImpact());
       },
       onTap: () {
         if (_tapLocked) return;
         _tapLocked = true;
         widget.onTap();
-        _controller.reverse();
+        if (AppMotion.enabled(context)) _controller.reverse();
         Future.delayed(const Duration(milliseconds: 140), () {
           if (!mounted) return;
           _tapLocked = false;
         });
       },
       onTapCancel: () {
-        _controller.reverse();
+        if (AppMotion.enabled(context)) _controller.reverse();
       },
       child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );
@@ -3453,7 +3531,10 @@ class _DevModeIndicatorBar extends StatelessWidget {
                   },
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
                   ),
                   child: Text(
                     l.settingsHubAccount,
@@ -3470,4 +3551,12 @@ class _DevModeIndicatorBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Interpolates between two non-null [Rect]s for the tutorial spotlight.
+class _SpotlightRectTween extends Tween<Rect> {
+  _SpotlightRectTween({required Rect super.begin, required Rect super.end});
+
+  @override
+  Rect lerp(double t) => Rect.lerp(begin, end, t)!;
 }

@@ -1,3 +1,6 @@
+import '../../../core/defensive_parsers.dart';
+import '../../../core/time_utils.dart';
+import '../../../core/timetable_date_utils.dart';
 import '../../../data/cache/offline_cache_store.dart';
 import '../../../data/webuntis/webuntis_client.dart';
 import '../domain/teacher_schedule.dart';
@@ -29,24 +32,13 @@ class TeacherSearchIndexService {
   final TimetableRepository _repository;
   final OfflineCacheStore _cache;
 
-  DateTime _weekStart(DateTime date) {
-    final day = DateTime(date.year, date.month, date.day);
-    if (day.weekday >= DateTime.saturday) {
-      return day.add(Duration(days: 8 - day.weekday));
-    }
-    return day.subtract(Duration(days: day.weekday - DateTime.monday));
-  }
-
   String _cacheKey(
     String accountId,
     WebUntisRequestContext context,
     DateTime date,
   ) {
-    final monday = _weekStart(date);
-    final week =
-        '${monday.year.toString().padLeft(4, '0')}'
-        '${monday.month.toString().padLeft(2, '0')}'
-        '${monday.day.toString().padLeft(2, '0')}';
+    final monday = resolveDefaultTimetableMonday(date);
+    final week = untisDateString(monday);
     return _cache.scopedKey(
       accountId: accountId,
       dataset: 'teacherSearchIndexV1',
@@ -75,7 +67,7 @@ class TeacherSearchIndexService {
       throw StateError('No classes are available for teacher search.');
     }
 
-    final monday = _weekStart(date);
+    final monday = resolveDefaultTimetableMonday(date);
     final friday = monday.add(const Duration(days: 4));
     final catalogContext = context.copyWith(sessionId: catalog.sessionId);
     final teachersById = <int, _TeacherIndexEntry>{};
@@ -86,7 +78,7 @@ class TeacherSearchIndexService {
       final batch = classes.skip(offset).take(4);
       final results = await Future.wait(
         batch.map((schoolClass) async {
-          final classId = _asInt(schoolClass['id']);
+          final classId = asIntOrNull(schoolClass['id']);
           if (classId == null || classId <= 0) return null;
           try {
             final publicData = await _repository.fetchPublicWeeklyData(
@@ -135,7 +127,7 @@ class TeacherSearchIndexService {
             (key, value) => MapEntry(key.toString(), value),
           );
           for (final rawTeacher in _teacherMaps(lesson['te'])) {
-            final teacherId = _asInt(rawTeacher['id']);
+            final teacherId = asIntOrNull(rawTeacher['id']);
             if (teacherId == null || teacherId <= 0) continue;
             final name = _teacherName(rawTeacher);
             if (name.isEmpty) continue;
@@ -219,7 +211,7 @@ class TeacherSearchIndexService {
       teachers: teachers,
       lessonsByTeacherId: lessons,
       savedAt: savedAt,
-      scannedClasses: _asInt(payload['scannedClasses']) ?? 0,
+      scannedClasses: asIntOrNull(payload['scannedClasses']) ?? 0,
     );
   }
 }
@@ -269,8 +261,8 @@ List<dynamic> _lessonsFromPublicData(Map<String, dynamic> data, int classId) {
   for (final raw in elements) {
     if (raw is! Map) continue;
     final element = raw.map((key, value) => MapEntry(key.toString(), value));
-    final type = _asInt(element['type']);
-    final id = _asInt(element['id']);
+    final type = asIntOrNull(element['type']);
+    final id = asIntOrNull(element['id']);
     if (type != null && id != null) namesByElement['$type:$id'] = element;
   }
 
@@ -294,8 +286,8 @@ List<dynamic> _lessonsFromPublicData(Map<String, dynamic> data, int classId) {
       final element = rawElement.map(
         (key, value) => MapEntry(key.toString(), value),
       );
-      final type = _asInt(element['type']);
-      final id = _asInt(element['id']);
+      final type = asIntOrNull(element['type']);
+      final id = asIntOrNull(element['id']);
       if (type == null || id == null) continue;
       final detail = namesByElement['$type:$id'] ?? const <String, dynamic>{};
       final name = _teacherName(detail).isNotEmpty
@@ -336,8 +328,5 @@ String? _elementName(dynamic value) {
   }
   return value is String && value.trim().isNotEmpty ? value.trim() : null;
 }
-
-int? _asInt(dynamic value) =>
-    value is num ? value.toInt() : int.tryParse(value?.toString() ?? '');
 
 String _text(dynamic value) => value?.toString().trim() ?? '';

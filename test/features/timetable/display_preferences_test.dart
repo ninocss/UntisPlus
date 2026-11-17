@@ -1,10 +1,33 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:untisplus/core/settings_store.dart';
 import 'package:untisplus/main.dart' as app;
 
 void main() {
   tearDown(() {
     app.showFullTeacherNamesNotifier.value = true;
     app.timetableDaySpanNotifier.value = 1;
+    app.lessonExpressiveDesignNotifier.value = false;
+  });
+
+  group('lesson expressive design preference', () {
+    test('defaults to false', () {
+      expect(app.lessonExpressiveDesignNotifier.value, isFalse);
+    });
+
+    test('persists preference when changed', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      await SettingsStore.initialize(preferences: prefs);
+
+      await app.settingsSetLessonExpressiveDesign(true);
+      expect(app.lessonExpressiveDesignNotifier.value, isTrue);
+      expect(prefs.getBool('lessonExpressiveDesign'), isTrue);
+
+      await app.settingsSetLessonExpressiveDesign(false);
+      expect(app.lessonExpressiveDesignNotifier.value, isFalse);
+      expect(prefs.getBool('lessonExpressiveDesign'), isFalse);
+    });
   });
 
   group('displayTeacherForLesson', () {

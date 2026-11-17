@@ -1,4 +1,4 @@
-import 'package:intl/intl.dart';
+import '../core/time_utils.dart';
 
 class DemoModeService {
   static const int demoPersonType = 5;
@@ -375,7 +375,7 @@ class DemoModeService {
           fr: 'Examen',
           es: 'Examen parcial',
         ),
-        'date': _dateInt(
+        'date': untisDateInt(
           DateTime(y, now.month, now.day).add(const Duration(days: 3)),
         ),
         'description': _copy(
@@ -401,7 +401,7 @@ class DemoModeService {
           fr: 'Contrôle de vocabulaire',
           es: 'Prueba de vocabulario',
         ),
-        'date': _dateInt(
+        'date': untisDateInt(
           DateTime(y, now.month, now.day).add(const Duration(days: 8)),
         ),
         'description': _copy(
@@ -427,7 +427,7 @@ class DemoModeService {
           fr: 'Évaluation de laboratoire',
           es: 'Evaluación de laboratorio',
         ),
-        'date': _dateInt(
+        'date': untisDateInt(
           DateTime(y, now.month, now.day).add(const Duration(days: 12)),
         ),
         'description': _copy(
@@ -550,7 +550,7 @@ class DemoModeService {
           fr: 'Le mode démo présente toutes les fonctions avec des données locales.',
           es: 'El modo demo muestra todas las funciones con datos locales de ejemplo.',
         ),
-        'date': _dateInt(today),
+        'date': untisDateInt(today),
         'author': 'Untis+',
       },
       {
@@ -569,7 +569,7 @@ class DemoModeService {
           fr: 'Le cours de chimie du vendredi aura lieu comme prévu.',
           es: 'La clase de química del viernes tendrá lugar según lo previsto.',
         ),
-        'date': _dateInt(today.subtract(const Duration(days: 1))),
+        'date': untisDateInt(today.subtract(const Duration(days: 1))),
         'author': _copy(
           locale,
           de: 'Sekretariat',
@@ -648,6 +648,126 @@ class DemoModeService {
     return List<String>.from(rooms[rangeIndex % rooms.length]);
   }
 
+  static List<Map<String, dynamic>> demoRooms() => const [
+    {'id': 888001, 'name': 'A102', 'longName': 'Raum A102', 'building': 'Haus A'},
+    {'id': 888002, 'name': 'B201', 'longName': 'Physiksaal B201', 'building': 'Haus B'},
+    {'id': 888003, 'name': 'C104', 'longName': 'Chemieraum C104', 'building': 'Haus C'},
+    {'id': 888004, 'name': 'Bibliothek', 'longName': 'Schulbibliothek', 'building': 'Zentral'},
+    {'id': 888005, 'name': 'Medienraum', 'longName': 'Informatik-Labor', 'building': 'Haus B'},
+    {'id': 888006, 'name': 'Musikraum', 'longName': 'Musiksaal M1', 'building': 'Haus C'},
+    {'id': 888007, 'name': 'Sporthalle', 'longName': 'Sporthalle groß', 'building': 'Sport'},
+  ];
+
+  static List<dynamic> demoRoomLessons({
+    required int roomId,
+    required DateTime date,
+  }) {
+    final d = untisDateInt(date);
+    switch (roomId) {
+      case 888001:
+        return [
+          {
+            'date': d,
+            'startTime': 755,
+            'endTime': 840,
+            'su': [{'name': 'Mathe'}],
+            'te': [{'name': 'Müller'}],
+            'kl': [{'name': '10A'}],
+          },
+          {
+            'date': d,
+            'startTime': 945,
+            'endTime': 1030,
+            'su': [{'name': 'Deutsch'}],
+            'te': [{'name': 'Becker'}],
+            'kl': [{'name': '10B'}],
+          },
+        ];
+      case 888002:
+        return [
+          {
+            'date': d,
+            'startTime': 845,
+            'endTime': 930,
+            'su': [{'name': 'Physik'}],
+            'te': [{'name': 'Schmidt'}],
+            'kl': [{'name': 'Q1'}],
+          },
+        ];
+      case 888003:
+        return [
+          {
+            'date': d,
+            'startTime': 1045,
+            'endTime': 1130,
+            'su': [{'name': 'Chemie'}],
+            'te': [{'name': 'Wagner'}],
+            'kl': [{'name': '10A'}],
+          },
+        ];
+      default:
+        return const <dynamic>[];
+    }
+  }
+
+  static List<Map<String, dynamic>> demoTeachers() => const [
+    {'id': 777001, 'name': 'BEC', 'foreName': 'Anna', 'longName': 'Becker'},
+    {'id': 777002, 'name': 'MUE', 'foreName': 'Thomas', 'longName': 'Müller'},
+    {'id': 777003, 'name': 'SCH', 'foreName': 'Sarah', 'longName': 'Schmidt'},
+    {'id': 777004, 'name': 'WAG', 'foreName': 'Michael', 'longName': 'Wagner'},
+  ];
+
+  static List<dynamic> demoTeacherLessons({
+    required int teacherId,
+    required DateTime date,
+  }) {
+    final d = untisDateInt(date);
+    switch (teacherId) {
+      case 777001: // Becker
+        return [
+          {
+            'date': d,
+            'startTime': 945,
+            'endTime': 1030,
+            'su': [{'name': 'Deutsch'}],
+            'ro': [{'name': 'A102'}],
+          },
+        ];
+      case 777002: // Müller
+        return [
+          {
+            'date': d,
+            'startTime': 755,
+            'endTime': 840,
+            'su': [{'name': 'Mathe'}],
+            'ro': [{'name': 'A102'}],
+          },
+        ];
+      case 777003: // Schmidt
+        return [
+          {
+            'date': d,
+            'startTime': 845,
+            'endTime': 930,
+            'su': [{'name': 'Physik'}],
+            'ro': [{'name': 'B201'}],
+          },
+        ];
+      case 777004: // Wagner
+        return [
+          {
+            'date': d,
+            'startTime': 1045,
+            'endTime': 1130,
+            'su': [{'name': 'Chemie'}],
+            'ro': [{'name': 'C104'}],
+          },
+        ];
+      default:
+        return const <dynamic>[];
+    }
+  }
+
   static Map<String, dynamic> _lesson(
     DateTime date,
     int startTime,
@@ -658,11 +778,11 @@ class DemoModeService {
     String room, {
     String code = '',
   }) {
-    final id = _dateInt(date) * 10000 + startTime;
+    final id = untisDateInt(date) * 10000 + startTime;
     return {
       'id': id,
       'lsid': id,
-      'date': _dateInt(date),
+      'date': untisDateInt(date),
       'startTime': startTime,
       'endTime': endTime,
       '_subjectShort': subjectShort,
@@ -676,10 +796,6 @@ class DemoModeService {
       'lstext': '',
       'homework': '',
     };
-  }
-
-  static int _dateInt(DateTime date) {
-    return int.parse(DateFormat('yyyyMMdd').format(date));
   }
 
   static String _subjectName(String code, String locale) {

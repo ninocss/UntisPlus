@@ -1,4 +1,6 @@
+import '../../../core/defensive_parsers.dart';
 import '../../../core/time_utils.dart';
+import '../../../data/webuntis/untis_endpoint.dart';
 import '../../../data/webuntis/webuntis_client.dart';
 
 class TimetableMasterData {
@@ -62,30 +64,46 @@ class TimetableRepository {
   Future<TimetableMasterData> fetchMasterData(
     WebUntisRequestContext context,
   ) async {
-    final responses = await Future.wait([
-      _client.rpc(
-        context: context,
-        method: 'getSubjects',
-        params: const <String, dynamic>{},
-        requestId: 'sub',
-      ),
-      _client.rpc(
-        context: context,
-        method: 'getTeachers',
-        params: const <String, dynamic>{},
-        requestId: 'tea',
-      ),
-      _client.rpc(
-        context: context,
-        method: 'getRooms',
-        params: const <String, dynamic>{},
-        requestId: 'roo',
-      ),
+    final subjectsFuture = _client
+        .rpc(
+          context: context,
+          method: 'getSubjects',
+          params: const <String, dynamic>{},
+          requestId: 'sub',
+        )
+        .then(_resultMaps)
+        .catchError((_) => const <Map<String, dynamic>>[]);
+
+    final teachersFuture = _client
+        .rpc(
+          context: context,
+          method: 'getTeachers',
+          params: const <String, dynamic>{},
+          requestId: 'tea',
+        )
+        .then(_resultMaps)
+        .catchError((_) => const <Map<String, dynamic>>[]);
+
+    final roomsFuture = _client
+        .rpc(
+          context: context,
+          method: 'getRooms',
+          params: const <String, dynamic>{},
+          requestId: 'roo',
+        )
+        .then(_resultMaps)
+        .catchError((_) => const <Map<String, dynamic>>[]);
+
+    final results = await Future.wait([
+      subjectsFuture,
+      teachersFuture,
+      roomsFuture,
     ]);
+
     return TimetableMasterData(
-      subjects: _resultMaps(responses[0]),
-      teachers: _resultMaps(responses[1]),
-      rooms: _resultMaps(responses[2]),
+      subjects: results[0],
+      teachers: results[1],
+      rooms: results[2],
     );
   }
 
@@ -100,10 +118,10 @@ class TimetableRepository {
     bool showSubstitutionText = true,
     bool showInfo = true,
     bool showBooking = true,
-    bool showRooms = false,
-    bool showSubjects = false,
-    bool showTeachers = false,
-    bool showClasses = false,
+    bool showRooms = true,
+    bool showSubjects = true,
+    bool showTeachers = true,
+    bool showClasses = true,
   }) async {
     final response = await _client.rpc(
       context: context,
@@ -280,10 +298,10 @@ class TimetableRepository {
         '${date.year.toString().padLeft(4, '0')}-'
         '${date.month.toString().padLeft(2, '0')}-'
         '${date.day.toString().padLeft(2, '0')}';
-    final uri = Uri.https(
-      context.schoolUrl,
-      '/WebUntis/api/public/timetable/weekly/data',
-      {
+    final uri = Uri.parse(
+      '${untisBaseUrl(schoolUrl: context.schoolUrl)}/WebUntis/api/public/timetable/weekly/data',
+    ).replace(
+      queryParameters: {
         'elementType': elementType.toString(),
         'elementId': elementId.toString(),
         'date': isoDate,
@@ -304,7 +322,62 @@ class TimetableRepository {
     final result = root is Map ? root['result'] : null;
     final data = result is Map ? result['data'] : null;
     if (data is! Map) return null;
-    return data.map((key, value) => MapEntry(key.toString(), value));
+    return asStringDynamicMap(data);
+  }
+
+  Future<Map<String, dynamic>?> fetchPublicDayData({
+    required WebUntisRequestContext context,
+    required int elementId,
+    required int elementType,
+    required DateTime date,
+  }) async {
+    final isoDate =
+        '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+    final uri = Uri.parse(
+      '${untisBaseUrl(schoolUrl: context.schoolUrl)}/WebUntis/api/public/timetable/day/data',
+    ).replace(
+      queryParameters: {
+        'elementType': elementType.toString(),
+        'elementId': elementId.toString(),
+        'date': isoDate,
+      },
+    );
+    final decoded = await _client.getJson(
+      uri: uri,
+      headers: {
+        if (context.sessionId.isNotEmpty)
+          'Cookie':
+              'JSESSIONID=${context.sessionId}; schoolname=${context.schoolName}',
+        'Accept': 'application/json',
+      },
+    );
+    if (decoded is! Map) return null;
+    final root = decoded['data'];
+    final result = root is Map ? root['result'] : null;
+    final data = result is Map ? result['data'] : null;
+    if (data is! Map) return null;
+    return asStringDynamicMap(data);
+  }
+
+  Future<Map<String, dynamic>?> fetchWeeklyPageConfig({
+    required WebUntisRequestContext context,
+  }) async {
+    final uri = Uri.parse(
+      '${untisBaseUrl(schoolUrl: context.schoolUrl)}/WebUntis/api/public/timetable/weekly/pageconfig',
+    );
+    final decoded = await _client.getJson(
+      uri: uri,
+      headers: {
+        if (context.sessionId.isNotEmpty)
+          'Cookie':
+              'JSESSIONID=${context.sessionId}; schoolname=${context.schoolName}',
+        'Accept': 'application/json',
+      },
+    );
+    if (decoded is! Map) return null;
+    return asStringDynamicMap(decoded);
   }
 
   static List<Map<String, dynamic>> _resultMaps(Map<String, dynamic> response) {
@@ -312,9 +385,7 @@ class TimetableRepository {
     if (result is! List) return const <Map<String, dynamic>>[];
     return result
         .whereType<Map>()
-        .map(
-          (item) => item.map((key, value) => MapEntry(key.toString(), value)),
-        )
+        .map(asStringDynamicMap)
         .toList(growable: false);
   }
 }

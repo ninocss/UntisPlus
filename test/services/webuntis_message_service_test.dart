@@ -102,4 +102,64 @@ void main() {
       );
     },
   );
+
+  test('prefers v3 message paths when available', () async {
+    final jwt =
+        'header.${base64Url.encode(utf8.encode(jsonEncode({'tenant_id': 'tenant-8'}))).replaceAll('=', '')}.signature';
+    final requestedPaths = <String>[];
+    final service = WebUntisMessageService(
+      client: MockClient((request) async {
+        requestedPaths.add(request.url.path);
+        final path = request.url.path;
+        if (path.endsWith('/api/token/new')) {
+          return http.Response(jsonEncode({'accessToken': jwt}), 200);
+        }
+        if (path.endsWith('/jsonrpc.do')) {
+          return http.Response(jsonEncode({'result': {'id': 2026}}), 200);
+        }
+        if (path.contains('/v3/')) {
+          if (path.endsWith('/permissions')) {
+            return http.Response(
+              jsonEncode({'recipientOptions': ['TEACHER']}),
+              200,
+            );
+          }
+          if (path.endsWith('/recipients/static/persons')) {
+            return http.Response(
+              jsonEncode([
+                {
+                  'type': 'TEACHER',
+                  'persons': [
+                    {'userId': 99, 'displayName': 'Frau Professor V3'},
+                  ],
+                },
+              ]),
+              200,
+            );
+          }
+        }
+        return http.Response('Missing', 404);
+      }),
+    );
+
+    final data = await service.loadComposeData(
+      schoolUrl: 'example.webuntis.com',
+      schoolName: 'Example School',
+      sessionId: 'session-id',
+    );
+    expect(data.recipients.single.name, 'Frau Professor V3');
+    expect(
+      requestedPaths.any((p) => p.contains('/v3/messages/permissions')),
+      isTrue,
+    );
+    expect(
+      requestedPaths.any((p) => p.contains('/v3/messages/recipients/static/persons')),
+      isTrue,
+    );
+    // Should NOT have needed to fall back to v2 or v1 for those
+    expect(
+      requestedPaths.any((p) => p.contains('/v2/messages/permissions')),
+      isFalse,
+    );
+  });
 }

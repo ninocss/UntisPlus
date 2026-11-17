@@ -67,4 +67,55 @@ void main() {
       expect(lessons, isEmpty);
     },
   );
+
+  test('fetches public day timetable data', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/WebUntis/api/public/timetable/day/data');
+      expect(request.url.queryParameters['elementType'], '1');
+      expect(request.url.queryParameters['elementId'], '10');
+      expect(request.url.queryParameters['date'], '2026-11-03');
+      return http.Response(
+        jsonEncode({
+          'data': {
+            'result': {
+              'data': {
+                'elementIds': [10],
+              },
+            },
+          },
+        }),
+        200,
+      );
+    });
+    final repository = TimetableRepository(
+      client: WebUntisClient(client: client, maxRetries: 0),
+    );
+
+    final data = await repository.fetchPublicDayData(
+      context: context,
+      elementId: 10,
+      elementType: 1,
+      date: DateTime(2026, 11, 3),
+    );
+
+    expect(data?['elementIds'], [10]);
+  });
+
+  test('fetches weekly page config', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/WebUntis/api/public/timetable/weekly/pageconfig');
+      return http.Response(
+        jsonEncode({
+          'showTeacher': true,
+        }),
+        200,
+      );
+    });
+    final repository = TimetableRepository(
+      client: WebUntisClient(client: client, maxRetries: 0),
+    );
+
+    final config = await repository.fetchWeeklyPageConfig(context: context);
+    expect(config?['showTeacher'], isTrue);
+  });
 }

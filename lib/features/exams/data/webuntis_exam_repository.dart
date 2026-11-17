@@ -22,7 +22,9 @@ class WebUntisExamRepository {
     final paths = <String>[
       '/WebUntis/api/exams',
       '/WebUntis/api/classreg/exams',
+      '/WebUntis/api/rest/view/v1/exams',
       if (personId != 0) '/WebUntis/api/exams/student/$personId',
+      '/WebUntis/api/exams/my',
     ];
 
     Future<List<Map<String, dynamic>>> request(

@@ -219,4 +219,86 @@ void main() {
 
     expect(result.inbox.single['attachments'], [attachment]);
   });
+
+  test('parses singular attachment map and alternative naming fields', () async {
+    final client = WebUntisClient(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/api/token/new')) {
+          return http.Response('inbox-token', 200);
+        }
+        if (request.url.path.endsWith('/api/rest/view/v1/messages')) {
+          return http.Response(
+            jsonEncode({
+              'incomingMessages': [
+                {
+                  'fileAttachment': {
+                    'id': 'file-99',
+                    'filename': 'Elternbrief.pdf',
+                    'url': '/WebUntis/api/rest/view/v1/messages/msg-1/attachments/file-99',
+                  },
+                  'message': {
+                    'id': 'msg-1',
+                    'title': 'Schwimmen',
+                    'content': 'Anbei Information',
+                  },
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        if (request.url.path.contains('/news/newsWidgetData')) {
+          return http.Response(
+            jsonEncode({
+              'data': {'messagesOfDay': []},
+            }),
+            200,
+          );
+        }
+        return http.Response('Not found', 404);
+      }),
+      maxRetries: 0,
+    );
+
+    final result = await SchoolInfoRepository(client: client).fetch(
+      schoolUrl: 'example.webuntis.com',
+      schoolName: 'Example School',
+      sessionId: 'session-id',
+    );
+
+    expect(result.inbox, hasLength(1));
+    expect(result.inbox.single['attachments'], [
+      {
+        'id': 'file-99',
+        'filename': 'Elternbrief.pdf',
+        'url': '/WebUntis/api/rest/view/v1/messages/msg-1/attachments/file-99',
+      },
+    ]);
+  });
+
+  test('downloads attachment via message rest endpoint when messageId is provided', () async {
+    final client = WebUntisClient(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/api/token/new')) {
+          return http.Response('inbox-token', 200);
+        }
+        if (request.url.path.contains('/messages/msg-1/attachments/file-99')) {
+          return http.Response.bytes([1, 2, 3, 4], 200, headers: {'content-type': 'application/octet-stream'});
+        }
+        return http.Response('Not found: ${request.url.path}', 404);
+      }),
+      maxRetries: 0,
+    );
+
+    final repo = SchoolInfoRepository(client: client);
+    final bytes = await repo.downloadAttachment(
+      schoolUrl: 'example.webuntis.com',
+      schoolName: 'Example School',
+      sessionId: 'session-id',
+      attachmentId: 'file-99',
+      messageId: 'msg-1',
+    );
+
+    expect(bytes, [1, 2, 3, 4]);
+  });
 }
