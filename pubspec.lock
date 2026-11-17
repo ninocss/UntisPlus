@@ -379,18 +379,18 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_local_notifications
-      sha256: "357be7ff996dc272e2037c69c1bdd5d1bd21172219d55f8bd2e11aeea602e6d3"
+      sha256: "9ee28742343dd13df758bb4185e8ded37ac2d1aeca6648c3ba7862c99797517e"
       url: "https://pub.dev"
     source: hosted
-    version: "22.3.1"
+    version: "22.3.2"
   flutter_local_notifications_linux:
     dependency: transitive
     description:
       name: flutter_local_notifications_linux
-      sha256: "9ca97e63776f29ab1b955725c09999fc2c150523269db150c39274f2a43c5a8b"
+      sha256: "3b89a4bf095fa5f8a99beeabf982c5bd506c3ad25e7b9e61da945e994dc5b615"
       url: "https://pub.dev"
     source: hosted
-    version: "8.0.1"
+    version: "8.0.2"
   flutter_local_notifications_platform_interface:
     dependency: transitive
     description:
@@ -530,18 +530,18 @@ packages:
     dependency: transitive
     description:
       name: hive_ce
-      sha256: "2b1bf607ddf852cad8deaf2331cac0e54289d3a3c64079463b26f196008909ce"
+      sha256: "8b6eea82b06a7e2bb298a6a279139c45838b82491a66f3972bf609d48681392a"
       url: "https://pub.dev"
     source: hosted
-    version: "2.20.1"
+    version: "2.22.0"
   hive_ce_flutter:
     dependency: "direct main"
     description:
       name: hive_ce_flutter
-      sha256: "231c5f025a44f4a555b4e7417d1468027cc32d9471b00543bd5bce72464a1009"
+      sha256: "7853fb2924c5dd6715c81f7a5cc4574afe4aac3c2d7ecd657fdeba409505f1d1"
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.0"
+    version: "2.5.0"
   home_widget:
     dependency: "direct main"
     description:
