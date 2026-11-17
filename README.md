@@ -1,202 +1,173 @@
-# UntisPlus
+<div align="center">
+  <img src="assets/icon.png" alt="UntisPlus icon" width="128" />
 
-<p align="center">
-  <img src="assets/icon.png" alt="UntisPlus Logo" width="120" style="border-radius: 24px;"/>
-</p>
+  # UntisPlus
 
-<p align="center">
-  <strong>A sleek, privacy-first companion app for WebUntis.</strong>
-</p>
+  **A modern, private-by-default WebUntis companion for everyday school life.**
 
-<p align="center">
-  <img src="https://img.shields.io/github/stars/ninocss/untisplus?style=for-the-badge&logo=github&color=3182ce" alt="GitHub stars">
-  <img src="https://img.shields.io/github/forks/ninocss/untisplus?style=for-the-badge&logo=github&color=3182ce" alt="GitHub forks">
-  <img src="https://img.shields.io/github/issues/ninocss/untisplus?style=for-the-badge&logo=github&color=e53e3e" alt="GitHub issues">
-  <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter">
-</p>
+  <p>
+    <a href="https://github.com/ninocss/UntisPlus/releases"><img src="https://img.shields.io/github/v/release/ninocss/UntisPlus?display_name=tag&style=flat-square&logo=github&label=release" alt="Latest release"></a>
+    <a href="https://github.com/ninocss/UntisPlus/stargazers"><img src="https://img.shields.io/github/stars/ninocss/UntisPlus?style=flat-square&logo=github" alt="GitHub stars"></a>
+    <a href="https://github.com/ninocss/UntisPlus/network/members"><img src="https://img.shields.io/github/forks/ninocss/UntisPlus?style=flat-square&logo=github" alt="GitHub forks"></a>
+    <a href="https://github.com/ninocss/UntisPlus/issues"><img src="https://img.shields.io/github/issues/ninocss/UntisPlus?style=flat-square&logo=github" alt="Open issues"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/ninocss/UntisPlus?style=flat-square" alt="MIT license"></a>
+  </p>
 
----
+  <p>
+    <a href="https://github.com/ninocss/UntisPlus/releases">Download</a>
+    &nbsp;&bull;&nbsp;
+    <a href="https://github.com/ninocss/UntisPlus/issues/new/choose">Report a bug</a>
+    &nbsp;&bull;&nbsp;
+    <a href="https://github.com/ninocss/UntisPlus/discussions">Discussions</a>
+    &nbsp;&bull;&nbsp;
+    <a href="https://github.com/ninocss/UntisPlus#contributing">Contribute</a>
+  </p>
+</div>
+
+<br>
 
 ## Overview
 
-UntisPlus is a modern, secure, and intuitive Flutter client for students and teachers to manage school schedules, tasks, and communications. Built with privacy as the default: all authentication details, credentials, and schedule data stay strictly on your local device — nothing is ever shared with central servers.
+UntisPlus is an open-source Flutter client for WebUntis. It brings timetables, substitutions, homework, exams, announcements, widgets, and helpful school tools into one focused app for Android and iOS.
 
-| Aspect | Specification |
-| :--- | :--- |
-| **Data Policy** | Private by default. Credentials and schedule data never leave your device. (Zero cloud data sharing when using Local AI)|
-| **Current Version** | `5.7.1` |
-| **Target Platforms** | Android, iOS |
-| **Languages** | English, Deutsch, Español, Français |
+The app is **private by default**: credentials, schedules, and local caches are stored on your device. Optional remote AI providers only receive data when you explicitly configure and use them; local AI models keep processing on-device.
 
----
+| | |
+|---|---|
+| **Platforms** | Android & iOS |
+| **Languages** | English, German, Spanish, French |
+| **Latest release** | [v5.7.1](https://github.com/ninocss/UntisPlus/releases/tag/v5.7.1) |
+| **License** | [MIT](LICENSE) |
 
-## Features
+## What you can do
 
-* **Expressive & Adaptive Timetable** — Fluid daily and weekly views featuring the modern Material 3 Expressive design, live wave progress indicator, gesture navigation, and clear badges for substitutions and cancellations.
-* **Absences & Change Center** — Offline-first absence management and a unified, deduplicated timeline for teacher, room, subject changes, and cancellations.
-* **Exam & Homework Tracker** — Consolidated overview of upcoming exams, homework deadlines, lesson notes, and direct school broadcast announcements.
-* **Privacy-First AI Copilot** — Run local AI models directly on your device (via fllama / GGUF) with zero cloud data transmission, or connect your own API keys / custom endpoints (OpenAI, Gemini, Claude, Ollama, DeepSeek).
-* **Multi-Account by Design** — Seamlessly manage multiple student or teacher profiles with isolated credentials, caches, alarms, and widgets.
-* **Custom Home Screen Widgets** — Interactive widget editor with real-time preview, customizable themes, and quick status overviews for Android and iOS.
-* **Smart Room Finder** — Fast vacant classroom search with live period availability.
-* **Personalized & Accessible** — Multiple visual themes (Default, Manga, Glass, Cyber), dynamic Material You coloring, AMOLED dark mode, and high-contrast accessibility support.
-
----
+- **See your day at a glance** — expressive daily and weekly timetable views, lesson details, progress indicators, and gesture navigation.
+- **Stay ahead of changes** — substitutions, cancellations, room changes, teacher changes, and absences in one place.
+- **Track schoolwork** — homework, exams, grades, notes, and school announcements without switching apps.
+- **Find free rooms and teachers** — search availability by room, teacher, or period.
+- **Use AI on your terms** — run supported local GGUF models on-device or connect a provider you choose, including OpenAI-compatible endpoints, Gemini, Claude, Ollama, and DeepSeek.
+- **Manage multiple accounts** — keep student and teacher profiles separated with account-scoped data and settings.
+- **Personalize everything** — Material You colors, dark and AMOLED themes, custom backgrounds, and multiple visual styles.
+- **Stay informed** — notifications, alarms, background updates, live activities, and customizable Android/iOS home widgets.
 
 ## Screenshots
 
-| Welcome | Timetable | Lesson Details |
-| :---: | :---: | :---: |
-| <img src="assets/github/welcome.png" width="240" alt="Welcome" /> | <img src="assets/github/timetable.png" width="240" alt="Timetable" /> | <img src="assets/github/lesson_inspect.png" width="240" alt="Lesson details" /> |
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><img src="assets/github/welcome.png" width="220" alt="UntisPlus welcome screen"></td>
+      <td align="center"><img src="assets/github/timetable.png" width="220" alt="UntisPlus timetable"></td>
+      <td align="center"><img src="assets/github/lesson_inspect.png" width="220" alt="Lesson details"></td>
+    </tr>
+    <tr>
+      <td align="center"><sub>Welcome</sub></td>
+      <td align="center"><sub>Timetable</sub></td>
+      <td align="center"><sub>Lesson details</sub></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="assets/github/AI_assistant.png" width="220" alt="AI assistant"></td>
+      <td align="center"><img src="assets/github/Appearance.png" width="220" alt="Appearance settings"></td>
+      <td align="center"><img src="assets/github/Ready_to_go.png" width="220" alt="UntisPlus setup complete"></td>
+    </tr>
+    <tr>
+      <td align="center"><sub>AI assistant</sub></td>
+      <td align="center"><sub>Appearance</sub></td>
+      <td align="center"><sub>Ready to go</sub></td>
+    </tr>
+  </table>
+</div>
 
-| AI Assistant | Appearance | Ready to Go |
-| :---: | :---: | :---: |
-| <img src="assets/github/AI_assistant.png" width="240" alt="AI assistant" /> | <img src="assets/github/Appearance.png" width="240" alt="Appearance settings" /> | <img src="assets/github/Ready_to_go.png" width="240" alt="Ready to go" /> |
+## Install
 
----
+### Android
 
-## Roadmap
+Download the latest APK from [GitHub Releases](https://github.com/ninocss/UntisPlus/releases), then open it on your Android device.
 
-| Feature / Goal | Status |
-| :--- | :---: |
-| Material 3 Expressive UI redesign | Completed |
-| On-device local LLM copilot | Completed |
-| Offline-first structured cache foundation | Completed |
-| Absence overview and timetable change center | Completed |
-| Full 4-locale localization (EN, DE, ES, FR) | Completed |
-| Custom home screen widget editor | Completed |
-| Feature-by-feature Riverpod migration | In progress |
+### iOS with AltStore
 
----
+1. Install [AltStore Classic](https://faq.altstore.io/altstore-classic) using AltServer, or use [AltStore PAL](https://faq.altstore.io/altstore-pal) in the EU.
+2. Add the UntisPlus source:
 
-## Tech Stack & Key Dependencies
+   ```text
+   https://raw.githubusercontent.com/ninocss/untisplus/main/altstore/source.json
+   ```
 
-| Dependency | Purpose |
-| :--- | :--- |
-| **`http`** & **`dio`** | WebUntis API communication and network transfers |
-| **`fllama`** | On-device LLM inference runtime for private local AI |
-| **`flutter_secure_storage`** | Native encrypted keystore/keychain storage for credentials and tokens |
-| **`cryptography`** | Client-side cryptographic primitives and secure hashing |
-| **`shared_preferences`** | User preferences such as theme, language, and layout options |
-| **`hive_ce_flutter`** | Fast, versioned, account-scoped offline cache |
-| **`flutter_riverpod`** | Reactive state management and dependency injection |
-| **`dynamic_color`** | Material You dynamic theme integration |
-| **`home_widget`** | Native Android and iOS home screen widgets |
-| **`flutter_local_notifications`** | Time-critical lesson alerts, change notifications, and reminders |
+3. Install UntisPlus and sign it with your Apple ID.
 
----
+<div align="center">
+  <a href="https://altstore.io/source/raw.githubusercontent.com/ninocss/untisplus/main/altstore/source.json?app=com.ninocss.untisplus">
+    <img src="assets/altstore-download-light.png" alt="Add UntisPlus to AltStore" width="245">
+  </a>
+</div>
 
-## Project Structure
+> **TrollStore:** A legacy TrollStore IPA is available from [Releases](https://github.com/ninocss/UntisPlus/releases). This method is not maintained for modern iOS versions and depends on device-specific CoreTrust compatibility.
 
-```
-.
-├── assets/                    # Graphic elements and app icons
-├── lib/
-│   ├── app/                   # Central application routing configuration
-│   ├── core/                  # State engines, themes, and time utilities
-│   ├── data/                  # Secure storage, cache, and WebUntis transport
-│   ├── features/              # Typed feature data/domain modules
-│   ├── screens/               # System views, settings hub, and setup guides
-│   ├── services/              # Notification, background sync, and backup engines
-│   ├── web/                   # Web-specific platform adaptions
-│   └── widgets/               # Reusable UI elements and background filters
-└── pubspec.yaml               # Package definitions and metadata
-```
+## Build from source
 
----
+### Requirements
 
-## Development Setup
-
-### System Prerequisites
-
-Ensure the Flutter SDK is installed and configured in your environment variable path.
-
-### Execution
+- Flutter SDK `3.11` or newer
+- A configured Android Studio/Xcode toolchain for your target platform
+- A WebUntis account and school server for normal app use
 
 ```bash
-# Clone the codebase
-git clone https://github.com/ninocss/untisplus.git
-
-# Navigate into the project folder
-cd untisplus
-
-# Resolve project dependencies
+git clone https://github.com/ninocss/UntisPlus.git
+cd UntisPlus
 flutter pub get
-
-# Launch the application in debug mode
 flutter run
 ```
 
-Pure Dart and widget tests can be run without compiling the optional local-AI
-runtime. The wrapper temporarily substitutes a test-only fllama stub and always
-restores the production dependency afterwards:
+Run the test suite without compiling the optional local AI runtime:
 
 ```powershell
 pwsh -File tool/test_without_local_ai.ps1
 ```
 
-### Development Server
+The project is organized by feature under `lib/features`, with shared application code in `lib/core`, platform screens in `lib/screens`, and background/native integrations in `lib/services` and the platform folders.
 
-Please visit this Repo:
-https://github.com/OseMine/UntisPlus-dev-server
+## Project status
 
----
-## Installation
-### Android
-1. [Download](https://github.com/ninocss/untisplus/releases) the latest APK from Releases
-2. Install APK
+| Area | Status |
+|---|:---:|
+| Material 3 Expressive interface | ✅ |
+| Offline-first cache and account isolation | ✅ |
+| Local AI copilot foundation | ✅ |
+| Timetable changes, absences, exams, and homework | ✅ |
+| Android and iOS widgets | ✅ |
+| English, German, Spanish, and French localization | ✅ |
+| Broader Riverpod migration | 🚧 |
 
-### iOS
-1. Install AltStore Classic Using [Altserver](https://faq.altstore.io/altstore-classic) or [AltStore PAL (EU Only)](https://faq.altstore.io/altstore-pal).
-2. Add UntisPlus Source to AltStore
-```bash
-https://raw.githubusercontent.com/ninocss/untisplus/refs/heads/main/altstore/source.json
-```
-3. Install and Sign using Apple ID(Signing has to be renewt every 7 days when using a non Developer AppleID)
+See the [issue tracker](https://github.com/ninocss/UntisPlus/issues) for planned work and the [releases page](https://github.com/ninocss/UntisPlus/releases) for recent changes.
 
-<p align="center">
-  <a href="https://altstore.io/source/raw.githubusercontent.com/ninocss/untisplus/refs/heads/main/altstore/source.json?app=com.ninocss.untisplus">
-    <img src="assets/altstore-download-light.png" alt="Download on AltStore" width="245"/>
+## Star history
+
+<div align="center">
+  <a href="https://star-history.com/#ninocss/UntisPlus&Date">
+    <img src="https://api.star-history.com/svg?repos=ninocss/UntisPlus&type=Date" alt="Star History chart for UntisPlus" width="700">
   </a>
-</p>
+</div>
 
-### iOS (TrollStore)
-TrollStore installs Untis+ permanently — no Apple ID and no 7-day re-signing.
-> [!WARNING]
-> This version and installation method are not actively maintained, as TrollStore is no longer supported on iOS 17+.
-
-> Compatibility: TrollStore relies on the CoreTrust bug and works on **iOS 14.0 – 17.0** on supported devices (not iOS 17.0.1+ or newer). It is **not** a jailbreak. See [ios.cfw.guide](https://ios.cfw.guide/installing-trollstore) for device compatibility and installation of TrollStore itself.
-
-1. [Install TrollStore](https://ios.cfw.guide/installing-trollstore) on your device.
-2. Download the **TrollStore IPA** (`UntisPlus-v5.3.3-trollstore.ipa`) and nightly TrollStore builds from the [Releases](https://github.com/ninocss/untisplus/releases) page.
-3. Tap the downloaded file (visible in the Files app / your Downloads browser).
-4. Choose **Open with TrollStore**, then tap **Install**.
-5. Untis+ is now perma-signed; no signing renewal is ever needed.
-
-The TrollStore build is fake-signed with embedded entitlements (app groups, push) so home screen widgets, shared containers and notifications keep working. If apps stop launching after an OS update/reboot, re-select a **Persistence Helper** in TrollStore settings.
-
----
+If UntisPlus helps you stay organized, starring the repository is the easiest way to support the project.
 
 ## Contributing
 
-1. Fork the repository.
-2. Clone your fork: `git clone https://github.com/your-username/untisplus.git`
-3. Create a feature branch: `git checkout -b feature/your-feature`
-4. Commit changes with clear messages: `git commit -am 'Add explicit feature description'`
-5. Push to the branch: `git push origin feature/your-feature`
-6. Open a Pull Request against the `main` branch.
+Contributions, translations, bug reports, and feature ideas are welcome.
 
-Please give credits to UntisPlus (or your forked repo) in your work! ❤️
+1. Fork the repository and create a feature branch.
+2. Make your change and run the relevant tests.
+3. Open a pull request against `main` with a clear description.
 
----
+Please use the [issue templates](https://github.com/ninocss/UntisPlus/issues/new/choose) for bug reports and feature requests. For security concerns, see [SECURITY.md](SECURITY.md).
+
+## Support the project
+
+If you find UntisPlus useful, you can [sponsor the project on GitHub](https://github.com/sponsors/ninocss) or support [@nino161er on Ko-fi](https://ko-fi.com/nino161er).
 
 ## Disclaimer
 
-UntisPlus is an independent developer project. It is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WebUntis or any of its subsidiaries or affiliates.
-
----
+UntisPlus is an independent open-source project. It is not affiliated with, authorized by, endorsed by, or officially connected to WebUntis or any of its subsidiaries or affiliates.
 
 ## Developers
 
-- [ninocss](https://github.com/ninocss) — Founder & Developer
+- [ninocss](https://github.com/ninocss) — Founder & developer
 - [OseMine](https://github.com/OseMine) — Developer
