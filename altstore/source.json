@@ -38,9 +38,9 @@
           "version": "5.6.3",
           "buildVersion": "5.6.3",
           "date": "2026-11-07",
-          "localizedDescription": "This update introduces a fresh Material 3 Expressive look across the app, including redesigned settings, onboarding, and timetable views. We've also enhanced tablet navigation with a new glass sidebar and fixed week swipe navigation on the 5-day timetable view.",
+          "localizedDescription": "This update brings a fresh Material 3 Expressive UI redesign to settings, onboarding, and navigation, along with major layout enhancements for tablets. We also restored week swipe navigation in the timetable and fixed several display issues.",
           "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.7.0/UntisPlus-v5.7.0.ipa",
-          "size": 55602900,
+          "size": 55602896,
           "minOSVersion": "15.0"
         },
         {
@@ -198,7 +198,7 @@
     {
       "title": "Untis+ 5.6.3 is here",
       "identifier": "untisplus-release-5-6-3",
-      "caption": "This update introduces a fresh Material 3 Expressive look across the app, including redesigned settings, onboarding, and timetable views. We've also enhanced tablet navigation with a new glass sidebar and fixed week swipe navigation on the 5-day timetable view.",
+      "caption": "This update brings a fresh Material 3 Expressive UI redesign to settings, onboarding, and navigation, along with major layout enhancements for tablets. We also restored week swipe navigation in the timetable and fixed several display issues.",
       "date": "2026-11-07",
       "tintColor": "4A90D9",
       "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
